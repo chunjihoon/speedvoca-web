@@ -1,0 +1,40 @@
+import * as XLSX from "xlsx";
+import type { SentenceRow, SheetContent } from "../types/content";
+
+const WORKBOOK_PATH = "/data/speedvoca_data.xlsx";
+
+function normalizeCell(value: unknown): string {
+  if (value == null) return "";
+  return String(value).trim();
+}
+
+export async function loadWorkbook(): Promise<SheetContent[]> {
+  const res = await fetch(WORKBOOK_PATH, { cache: "no-store" });
+  if (!res.ok) {
+    throw new Error(`엑셀 파일을 불러오지 못했습니다. (${res.status})`);
+  }
+
+  const buffer = await res.arrayBuffer();
+  const workbook = XLSX.read(buffer, { type: "array" });
+
+  const sheets: SheetContent[] = workbook.SheetNames.map((sheetName) => {
+    const sheet = workbook.Sheets[sheetName];
+    const json = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, {
+      defval: "",
+    });
+
+    const rows: SentenceRow[] = json
+      .map((row) => ({
+        sentence: normalizeCell(row.sentence),
+        translation: normalizeCell(row.translation),
+      }))
+      .filter((row) => row.sentence.length > 0);
+
+    return {
+      name: sheetName,
+      rows,
+    };
+  }).filter((sheet) => sheet.rows.length > 0);
+
+  return sheets;
+}
