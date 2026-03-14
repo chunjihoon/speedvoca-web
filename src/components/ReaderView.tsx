@@ -7,6 +7,7 @@ type Props = {
   soundEnabled: boolean;
   repeatCount: number;
   onExit: () => void;
+  voiceURI: string | null;
 };
 
 export default function ReaderView({
@@ -14,6 +15,7 @@ export default function ReaderView({
   soundEnabled,
   repeatCount,
   onExit,
+  voiceURI,
 }: Props) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [spokenCount, setSpokenCount] = useState(0);
@@ -35,7 +37,7 @@ export default function ReaderView({
     let cancelled = false;
 
     async function run() {
-      await speakText(current.sentence, soundEnabled, 1);
+      await speakText(current.sentence, soundEnabled, 1, voiceURI);
       if (!cancelled) {
         setSpokenCount((prev) => Math.min(prev + 1, repeatCount));
       }
@@ -47,7 +49,7 @@ export default function ReaderView({
       cancelled = true;
       stopSpeech();
     };
-  }, [currentIndex, current?.sentence, repeatCount, soundEnabled]);
+  }, [currentIndex, current?.sentence, repeatCount, soundEnabled, voiceURI]);
 
   if (!current) {
     return (
@@ -75,7 +77,7 @@ export default function ReaderView({
       return;
     }
 
-    await speakText(current.sentence, soundEnabled, 1);
+    await speakText(current.sentence, soundEnabled, 1, voiceURI);
     setSpokenCount((prev) => Math.min(prev + 1, repeatCount));
   };
 

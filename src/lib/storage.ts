@@ -1,5 +1,7 @@
 const SOUND_ENABLED_KEY = "speedvoca_sound_enabled";
 const REPEAT_COUNT_KEY = "speedvoca_repeat_count";
+const VOICE_URI_KEY = "speedvoca_voice_uri";
+
 
 export function getSoundEnabled(): boolean {
   const raw = localStorage.getItem(SOUND_ENABLED_KEY);
@@ -20,4 +22,13 @@ export function getRepeatCount(): number {
 
 export function setRepeatCount(value: number) {
   localStorage.setItem(REPEAT_COUNT_KEY, String(value));
+}
+
+
+export function getVoiceURI(): string | null {
+  return localStorage.getItem(VOICE_URI_KEY);
+}
+
+export function setVoiceURI(value: string) {
+  localStorage.setItem(VOICE_URI_KEY, value);
 }

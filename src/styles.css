@@ -231,4 +231,19 @@
       min-height: auto;
     }
   }
+
+  .voice-wrap select {
+    max-width: 220px;
+  }
+  
+  @media (max-width: 640px) {
+    .voice-wrap {
+      width: 100%;
+    }
+  
+    .voice-wrap select {
+      width: 100%;
+      max-width: none;
+    }
+  }
   

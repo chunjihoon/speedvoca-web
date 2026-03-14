@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import type { SheetContent } from "./types/content";
+import type { SheetContent, TtsVoiceOption } from "./types/content";
 import { loadWorkbook } from "./lib/workbook";
 import TopBar from "./components/TopBar";
 import SheetList from "./components/SheetList";
@@ -7,10 +7,16 @@ import ReaderView from "./components/ReaderView";
 import {
   getRepeatCount,
   getSoundEnabled,
+  getVoiceURI,
   setRepeatCount,
   setSoundEnabled,
+  setVoiceURI,
 } from "./lib/storage";
-import { stopSpeech } from "./lib/tts";
+import {
+  getDefaultEnglishVoiceURI,
+  stopSpeech,
+  waitForVoices,
+} from "./lib/tts";
 
 export default function App() {
   const [loading, setLoading] = useState(true);
@@ -20,11 +26,32 @@ export default function App() {
   const [soundEnabled, setSoundEnabledState] = useState(getSoundEnabled());
   const [repeatCount, setRepeatCountState] = useState(getRepeatCount());
 
+  const [voices, setVoices] = useState<TtsVoiceOption[]>([]);
+  const [selectedVoiceURI, setSelectedVoiceURIState] = useState<string | null>(getVoiceURI());
+
   useEffect(() => {
     async function init() {
       try {
-        const data = await loadWorkbook();
+        const [data, loadedVoices] = await Promise.all([
+          loadWorkbook(),
+          waitForVoices(),
+        ]);
+
         setSheets(data);
+        setVoices(loadedVoices);
+
+        const savedVoice = getVoiceURI();
+        const validSavedVoice = loadedVoices.some((v) => v.voiceURI === savedVoice);
+
+        if (validSavedVoice && savedVoice) {
+          setSelectedVoiceURIState(savedVoice);
+        } else {
+          const fallback = getDefaultEnglishVoiceURI();
+          if (fallback) {
+            setSelectedVoiceURIState(fallback);
+            setVoiceURI(fallback);
+          }
+        }
       } catch (err) {
         setError(err instanceof Error ? err.message : "알 수 없는 오류");
       } finally {
@@ -52,6 +79,12 @@ export default function App() {
     setSelectedSheet(null);
   };
 
+  const handleChangeVoice = (voiceURI: string) => {
+    setSelectedVoiceURIState(voiceURI);
+    setVoiceURI(voiceURI);
+    stopSpeech();
+  };
+
   return (
     <div className="app-shell">
       <TopBar
@@ -61,6 +94,9 @@ export default function App() {
         onChangeRepeatCount={handleChangeRepeatCount}
         onBackToList={handleExitReader}
         inReader={!!selectedSheet}
+        voices={voices}
+        selectedVoiceURI={selectedVoiceURI}
+        onChangeVoice={handleChangeVoice}
       />
 
       {loading && <div className="status">엑셀 파일 로딩 중...</div>}
@@ -77,6 +113,7 @@ export default function App() {
           soundEnabled={soundEnabled}
           repeatCount={repeatCount}
           onExit={handleExitReader}
+          voiceURI={selectedVoiceURI}
         />
       )}
     </div>
