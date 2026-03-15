@@ -10,6 +10,11 @@ type Props = {
   voices: TtsVoiceOption[];
   selectedVoiceURI: string | null;
   onChangeVoice: (voiceURI: string) => void;
+  isLoggedIn: boolean;
+  userName: string;
+  onLogin: () => void;
+  onLogout: () => void;
+  onImport: () => void;
 };
 
 export default function TopBar({
@@ -22,6 +27,11 @@ export default function TopBar({
   voices,
   selectedVoiceURI,
   onChangeVoice,
+  isLoggedIn,
+  userName,
+  onLogin,
+  onLogout,
+  onImport,
 }: Props) {
   return (
     <header className="topbar">
@@ -30,6 +40,10 @@ export default function TopBar({
       </div>
 
       <div className="topbar-right">
+        <button className="control-btn" onClick={onImport}>
+          ＋ Import
+        </button>
+
         <button className="control-btn" onClick={onToggleSound}>
           {soundEnabled ? "🔊 Sound On" : "🔇 Sound Off"}
         </button>
@@ -66,6 +80,19 @@ export default function TopBar({
         {inReader && (
           <button className="control-btn" onClick={onBackToList}>
             ← Back
+          </button>
+        )}
+
+        {isLoggedIn ? (
+          <>
+            <span className="user-chip">{userName}</span>
+            <button className="control-btn" onClick={onLogout}>
+              Logout
+            </button>
+          </>
+        ) : (
+          <button className="control-btn" onClick={onLogin}>
+            Google Login
           </button>
         )}
       </div>
