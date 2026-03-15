@@ -10,19 +10,15 @@ import {
   
   const provider = new GoogleAuthProvider();
   
-  function isMobileLike() {
-    return /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-  }
-  
   export async function loginWithGoogle() {
     await setPersistence(auth, browserLocalPersistence);
   
-    if (isMobileLike()) {
+    try {
+      await signInWithPopup(auth, provider);
+    } catch (error) {
+      console.error("Popup login failed, falling back to redirect:", error);
       await signInWithRedirect(auth, provider);
-      return;
     }
-  
-    await signInWithPopup(auth, provider);
   }
   
   export async function logout() {
