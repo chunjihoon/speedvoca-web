@@ -1,6 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import type { SheetContent } from "../types/content";
 import { speakText, stopSpeech } from "../lib/tts";
+import {
+  isFavorite,
+  recordCompletedTap,
+  recordNext,
+  recordReplay,
+  toggleFavorite,
+} from "../lib/firestore";
 
 type Props = {
   sheet: SheetContent;
@@ -10,6 +17,8 @@ type Props = {
   voiceURI: string | null;
   isLoggedIn: boolean;
   onRequireLogin: () => Promise<boolean>;
+  userId?: string;
+  onStatsChanged?: () => Promise<void> | void;
 };
 
 export default function ReaderView({
@@ -20,14 +29,19 @@ export default function ReaderView({
   voiceURI,
   isLoggedIn,
   onRequireLogin,
+  userId,
+  onStatsChanged,
 }: Props) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [spokenCount, setSpokenCount] = useState(0);
   const [randomEnabled, setRandomEnabled] = useState(false);
   const [fontScale, setFontScale] = useState(1);
+  const [favoriteActive, setFavoriteActive] = useState(false);
+
+  const isFavoritesSheet = sheet.name === "Favorites";
 
   const displayRows = useMemo(() => {
-    if (!randomEnabled) return sheet.rows;
+    if (isFavoritesSheet || !randomEnabled) return sheet.rows;
 
     const copied = [...sheet.rows];
     for (let i = copied.length - 1; i > 0; i -= 1) {
@@ -35,7 +49,7 @@ export default function ReaderView({
       [copied[i], copied[j]] = [copied[j], copied[i]];
     }
     return copied;
-  }, [sheet.rows, randomEnabled]);
+  }, [sheet.rows, randomEnabled, isFavoritesSheet]);
 
   const current = useMemo(() => displayRows[currentIndex], [displayRows, currentIndex]);
 
@@ -43,6 +57,30 @@ export default function ReaderView({
     setCurrentIndex(0);
     setSpokenCount(0);
   }, [sheet.name, randomEnabled]);
+
+  useEffect(() => {
+    async function loadFavoriteState() {
+      if (!current) {
+        setFavoriteActive(false);
+        return;
+      }
+
+      if (isFavoritesSheet) {
+        setFavoriteActive(true);
+        return;
+      }
+
+      if (!isLoggedIn || !userId) {
+        setFavoriteActive(false);
+        return;
+      }
+
+      const exists = await isFavorite(userId, sheet.name, current.sentence);
+      setFavoriteActive(exists);
+    }
+
+    loadFavoriteState();
+  }, [isLoggedIn, userId, sheet.name, current?.sentence, current, isFavoritesSheet]);
 
   useEffect(() => {
     if (!current) return;
@@ -84,14 +122,32 @@ export default function ReaderView({
 
   const isLast = currentIndex === displayRows.length - 1;
   const canAutoNext = spokenCount >= repeatCount;
+  const statSheetName = isFavoritesSheet ? "Favorites" : sheet.name;
+  const favoriteTargetSheetName = current.sourceSheetName || sheet.name;
 
   const replayOrNext = async () => {
     if (canAutoNext) {
       if (!isLast) {
+        if (isLoggedIn && userId) {
+          await Promise.all([
+            recordNext(userId, statSheetName),
+            recordCompletedTap(userId, statSheetName),
+          ]);
+          await onStatsChanged?.();
+        }
+
         setCurrentIndex((prev) => prev + 1);
         setSpokenCount(0);
       }
       return;
+    }
+
+    if (isLoggedIn && userId) {
+      await Promise.all([
+        recordReplay(userId, statSheetName),
+        recordCompletedTap(userId, statSheetName),
+      ]);
+      await onStatsChanged?.();
     }
 
     await speakText(current.sentence, soundEnabled, 1, voiceURI);
@@ -104,21 +160,56 @@ export default function ReaderView({
     setSpokenCount(0);
   };
 
-  const forceNext = () => {
+  const forceNext = async () => {
     if (isLast) return;
+
+    if (isLoggedIn && userId) {
+      await Promise.all([
+        recordNext(userId, statSheetName),
+        recordCompletedTap(userId, statSheetName),
+      ]);
+      await onStatsChanged?.();
+    }
+
     setCurrentIndex((prev) => prev + 1);
     setSpokenCount(0);
   };
 
   const handleFavorite = async () => {
-    if (!isLoggedIn) {
+    if (!isLoggedIn || !userId) {
       await onRequireLogin();
       return;
     }
-    alert("다음 단계에서 즐겨찾기 저장을 붙입니다.");
+
+    const result = await toggleFavorite({
+      uid: userId,
+      sheetName: favoriteTargetSheetName,
+      sentence: current.sentence,
+      translation: current.translation,
+    });
+
+    await onStatsChanged?.();
+
+    if (isFavoritesSheet) {
+      if (!result.active) {
+        if (displayRows.length === 1) {
+          onExit();
+          return;
+        }
+
+        if (currentIndex >= displayRows.length - 1) {
+          setCurrentIndex((prev) => Math.max(0, prev - 1));
+        }
+      }
+      return;
+    }
+
+    setFavoriteActive(result.active);
   };
 
   const handleToggleRandom = async () => {
+    if (isFavoritesSheet) return;
+
     if (!isLoggedIn) {
       await onRequireLogin();
       return;
@@ -145,8 +236,10 @@ export default function ReaderView({
         </div>
 
         <div className="reader-toolbar">
-          <button className="control-btn" onClick={handleFavorite}>⭐ Favorite</button>
-          <button className="control-btn" onClick={handleToggleRandom}>
+          <button className="control-btn" onClick={handleFavorite}>
+            {favoriteActive ? "⭐ Favorited" : "☆ Favorite"}
+          </button>
+          <button className="control-btn" onClick={handleToggleRandom} disabled={isFavoritesSheet}>
             {randomEnabled ? "🔀 Random On" : "➡️ Random Off"}
           </button>
           <button className="control-btn" onClick={() => handleFontScale(-0.1)}>-A</button>

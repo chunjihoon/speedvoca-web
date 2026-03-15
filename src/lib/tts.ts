@@ -7,13 +7,15 @@ function getSynth() {
 }
 
 export function stopSpeech() {
-  getSynth().cancel();
+  const synth = getSynth();
+  synth.cancel();
   currentUtterance = null;
 }
 
 export function getVoiceOptions(): TtsVoiceOption[] {
   return getSynth()
     .getVoices()
+    .filter((voice) => voice.lang.toLowerCase().startsWith("en"))
     .map((voice) => ({
       name: voice.name,
       lang: voice.lang,
@@ -24,54 +26,53 @@ export function getVoiceOptions(): TtsVoiceOption[] {
 
 export function findVoiceByURI(voiceURI: string | null): SpeechSynthesisVoice | null {
   if (!voiceURI) return null;
-
-  const voices = getSynth().getVoices();
-  return voices.find((voice) => voice.voiceURI === voiceURI) ?? null;
+  return getSynth().getVoices().find((voice) => voice.voiceURI === voiceURI) ?? null;
 }
 
 export function waitForVoices(): Promise<TtsVoiceOption[]> {
   return new Promise((resolve) => {
     const synth = getSynth();
-    const voicesNow = getVoiceOptions();
 
-    if (voicesNow.length > 0) {
-      resolve(voicesNow);
-      return;
-    }
+    const resolveVoices = () => {
+      const voices = getVoiceOptions();
+      if (voices.length > 0) {
+        resolve(voices);
+        return true;
+      }
+      return false;
+    };
+
+    if (resolveVoices()) return;
 
     const handleVoicesChanged = () => {
-      const loaded = getVoiceOptions();
-      if (loaded.length > 0) {
+      if (resolveVoices()) {
         synth.removeEventListener("voiceschanged", handleVoicesChanged);
-        resolve(loaded);
       }
     };
 
     synth.addEventListener("voiceschanged", handleVoicesChanged);
 
-    // 안전장치: 일부 환경에서 이벤트가 안 와도 한번 더 체크
     setTimeout(() => {
-      const loaded = getVoiceOptions();
-      if (loaded.length > 0) {
+      if (resolveVoices()) {
         synth.removeEventListener("voiceschanged", handleVoicesChanged);
-        resolve(loaded);
       }
-    }, 500);
+    }, 1000);
   });
 }
 
 export function getDefaultEnglishVoiceURI(): string | null {
   const voices = getSynth().getVoices();
 
-  const englishDefault =
-    voices.find((voice) => voice.default && voice.lang.toLowerCase().startsWith("en")) ??
-    voices.find((voice) => voice.lang.toLowerCase().startsWith("en")) ??
+  const preferred =
+    voices.find((v) => v.lang.startsWith("en-US") && /Alex|Daniel|David|Google/.test(v.name)) ??
+    voices.find((v) => v.lang.startsWith("en-US")) ??
+    voices.find((v) => v.lang.startsWith("en")) ??
     voices[0];
 
-  return englishDefault?.voiceURI ?? null;
+  return preferred?.voiceURI ?? null;
 }
 
-export function speakText(
+export async function speakText(
   text: string,
   enabled: boolean,
   rate = 1,
@@ -83,7 +84,14 @@ export function speakText(
       return;
     }
 
-    stopSpeech();
+    const synth = getSynth();
+
+    try {
+      synth.cancel();
+      synth.resume(); // Chrome 꼬임 방지
+    } catch {
+      // ignore
+    }
 
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.lang = "en-US";
@@ -102,12 +110,22 @@ export function speakText(
       resolve();
     };
 
-    utterance.onerror = () => {
+    utterance.onerror = (event) => {
+      console.error("TTS error:", event);
       if (currentUtterance === utterance) currentUtterance = null;
       resolve();
     };
 
     currentUtterance = utterance;
-    getSynth().speak(utterance);
+
+    // 약간 늦춰서 speak
+    setTimeout(() => {
+      try {
+        synth.speak(utterance);
+      } catch (e) {
+        console.error("speak failed:", e);
+        resolve();
+      }
+    }, 30);
   });
 }

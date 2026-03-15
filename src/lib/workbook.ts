@@ -8,13 +8,7 @@ function normalizeCell(value: unknown): string {
   return String(value).trim();
 }
 
-export async function loadWorkbook(): Promise<SheetContent[]> {
-  const res = await fetch(WORKBOOK_PATH, { cache: "no-store" });
-  if (!res.ok) {
-    throw new Error(`엑셀 파일을 불러오지 못했습니다. (${res.status})`);
-  }
-
-  const buffer = await res.arrayBuffer();
+function parseWorkbookFromArrayBuffer(buffer: ArrayBuffer): SheetContent[] {
   const workbook = XLSX.read(buffer, { type: "array" });
 
   const sheets: SheetContent[] = workbook.SheetNames.map((sheetName) => {
@@ -37,4 +31,19 @@ export async function loadWorkbook(): Promise<SheetContent[]> {
   }).filter((sheet) => sheet.rows.length > 0);
 
   return sheets;
+}
+
+export async function loadWorkbook(): Promise<SheetContent[]> {
+  const res = await fetch(WORKBOOK_PATH, { cache: "no-store" });
+  if (!res.ok) {
+    throw new Error(`엑셀 파일을 불러오지 못했습니다. (${res.status})`);
+  }
+
+  const buffer = await res.arrayBuffer();
+  return parseWorkbookFromArrayBuffer(buffer);
+}
+
+export async function parseWorkbookFile(file: File): Promise<SheetContent[]> {
+  const buffer = await file.arrayBuffer();
+  return parseWorkbookFromArrayBuffer(buffer);
 }

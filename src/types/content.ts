@@ -1,6 +1,7 @@
 export type SentenceRow = {
     sentence: string;
     translation: string;
+    sourceSheetName?: string;
   };
   
   export type SheetContent = {
