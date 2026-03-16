@@ -2,12 +2,14 @@ import { useEffect, useMemo, useState } from "react";
 import type { SheetContent } from "../types/content";
 import { speakText, stopSpeech } from "../lib/tts";
 import {
-  isFavorite,
-  recordCompletedTap,
-  recordNext,
-  recordReplay,
-  toggleFavorite,
-} from "../lib/firestore";
+    isFavorite,
+    recordCompletedTap,
+    recordNext,
+    recordReplay,
+    saveChapterSettings,
+    toggleFavorite,
+  } from "../lib/firestore";
+  
 
 type Props = {
   sheet: SheetContent;
@@ -19,23 +21,30 @@ type Props = {
   onRequireLogin: () => Promise<boolean>;
   userId?: string;
   onStatsChanged?: () => Promise<void> | void;
+  chapterSettings?: {
+    randomEnabled?: boolean;
+    fontScale?: number;
+  };
+  
 };
 
 export default function ReaderView({
-  sheet,
-  soundEnabled,
-  repeatCount,
-  onExit,
-  voiceURI,
-  isLoggedIn,
-  onRequireLogin,
-  userId,
-  onStatsChanged,
-}: Props) {
+    sheet,
+    soundEnabled,
+    repeatCount,
+    onExit,
+    voiceURI,
+    isLoggedIn,
+    onRequireLogin,
+    userId,
+    onStatsChanged,
+    chapterSettings,
+  }: Props) {
+
   const [currentIndex, setCurrentIndex] = useState(0);
   const [spokenCount, setSpokenCount] = useState(0);
-  const [randomEnabled, setRandomEnabled] = useState(false);
-  const [fontScale, setFontScale] = useState(1);
+  const [randomEnabled, setRandomEnabled] = useState(chapterSettings?.randomEnabled ?? false);
+  const [fontScale, setFontScale] = useState(chapterSettings?.fontScale ?? 1);  
   const [favoriteActive, setFavoriteActive] = useState(false);
 
   const isFavoritesSheet = sheet.name === "Favorites";
@@ -105,6 +114,12 @@ export default function ReaderView({
       stopSpeech();
     };
   }, [currentIndex, current?.sentence, repeatCount, soundEnabled, voiceURI]);
+
+  useEffect(() => {
+    setRandomEnabled(chapterSettings?.randomEnabled ?? false);
+    setFontScale(chapterSettings?.fontScale ?? 1);
+  }, [sheet.name, chapterSettings?.randomEnabled, chapterSettings?.fontScale]);
+  
 
   if (!current) {
     return (
@@ -209,20 +224,43 @@ export default function ReaderView({
 
   const handleToggleRandom = async () => {
     if (isFavoritesSheet) return;
-
-    if (!isLoggedIn) {
+  
+    if (!isLoggedIn || !userId) {
       await onRequireLogin();
       return;
     }
-    setRandomEnabled((prev) => !prev);
+  
+    const next = !randomEnabled;
+    setRandomEnabled(next);
+  
+    await saveChapterSettings({
+      uid: userId,
+      sheetName: sheet.name,
+      randomEnabled: next,
+      fontScale,
+    });
+  
+    await onStatsChanged?.();
   };
+  
 
   const handleFontScale = async (delta: number) => {
-    if (!isLoggedIn) {
-      await onRequireLogin();
-      return;
-    }
-    setFontScale((prev) => Math.max(0.7, Math.min(1.6, +(prev + delta).toFixed(2))));
+    if (!isLoggedIn || !userId) {
+        await onRequireLogin();
+        return;
+    }    
+
+    const next = Math.max(0.7, Math.min(1.6, +(fontScale + delta).toFixed(2)));
+    setFontScale(next);    
+
+    await saveChapterSettings({
+        uid: userId,
+        sheetName: sheet.name,
+        randomEnabled,
+        fontScale: next,
+    });    
+    
+    await onStatsChanged?.();
   };
 
   return (

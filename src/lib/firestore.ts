@@ -16,6 +16,8 @@ import {
     nextCount?: number;
     replayCount?: number;
     favoriteCount?: number;
+    randomEnabled?: boolean;
+    fontScale?: number;
   };
   
   export type FavoriteItem = {
@@ -68,11 +70,13 @@ import {
       const data = docSnap.data() as ChapterMeta & { sheetName?: string };
       if (data.sheetName) {
         result[data.sheetName] = {
-          customTitle: data.customTitle ?? "",
-          completedSentenceCount: data.completedSentenceCount ?? 0,
-          nextCount: data.nextCount ?? 0,
-          replayCount: data.replayCount ?? 0,
-          favoriteCount: data.favoriteCount ?? 0,
+            customTitle: data.customTitle ?? "",
+            completedSentenceCount: data.completedSentenceCount ?? 0,
+            nextCount: data.nextCount ?? 0,
+            replayCount: data.replayCount ?? 0,
+            favoriteCount: data.favoriteCount ?? 0,
+            randomEnabled: data.randomEnabled ?? false,
+            fontScale: data.fontScale ?? 1,
         };
       }
     });
@@ -277,4 +281,38 @@ import {
   
     return items;
   }
+
+  export type ChapterSettings = {
+    randomEnabled?: boolean;
+    fontScale?: number;
+  };
+  
+  export async function saveChapterSettings(params: {
+    uid: string;
+    sheetName: string;
+    randomEnabled?: boolean;
+    fontScale?: number;
+  }) {
+    const { uid, sheetName, randomEnabled, fontScale } = params;
+  
+    const payload: Record<string, unknown> = {
+      sheetName,
+      updatedAt: serverTimestamp(),
+    };
+  
+    if (typeof randomEnabled === "boolean") {
+      payload.randomEnabled = randomEnabled;
+    }
+  
+    if (typeof fontScale === "number") {
+      payload.fontScale = fontScale;
+    }
+  
+    await setDoc(
+      doc(db, "users", uid, "chapterMeta", chapterDocId(sheetName)),
+      payload,
+      { merge: true }
+    );
+  }
+  
   

@@ -58,6 +58,9 @@ export default function App() {
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
+  const [settingsMap, setSettingsMap] = useState<Record<string, { randomEnabled?: boolean; fontScale?: number }>>({});
+
+
 
   useEffect(() => {
     async function init() {
@@ -97,12 +100,13 @@ export default function App() {
       setTitleMap({});
       setStatsMap({});
       setFavoriteRows([]);
+      setImportedSheets([]);
+      setSettingsMap({});
       setTotalStats({
         totalCompletedSentenceCount: 0,
         totalNextCount: 0,
         totalReplayCount: 0,
       });
-      setImportedSheets([]);
       return;
     }
 
@@ -116,6 +120,8 @@ export default function App() {
 
     const mappedTitles: Record<string, string> = {};
     const mappedStats: Record<string, VisibleChapterStat> = {};
+    const mappedSettings: Record<string, { randomEnabled?: boolean; fontScale?: number }> = {};
+
 
     Object.entries(meta).forEach(([sheetName, value]) => {
       if (value.customTitle?.trim()) {
@@ -128,6 +134,11 @@ export default function App() {
         replayCount: value.replayCount ?? 0,
         favoriteCount: value.favoriteCount ?? 0,
       };
+      mappedSettings[sheetName] = {
+        randomEnabled: value.randomEnabled ?? false,
+        fontScale: value.fontScale ?? 1,
+      };
+      
     });
 
     setTitleMap(mappedTitles);
@@ -146,6 +157,8 @@ export default function App() {
         rows: chapter.rows,
       }))
     );
+    setSettingsMap(mappedSettings);
+
   };
 
   useEffect(() => {
@@ -401,6 +414,7 @@ export default function App() {
           onRequireLogin={requireLogin}
           userId={user?.uid}
           onStatsChanged={reloadUserData}
+          chapterSettings={settingsMap[rawSheetMap[selectedSheet.name]?.name ?? selectedSheet.name]}
         />
       )}
     </div>
