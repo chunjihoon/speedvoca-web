@@ -315,4 +315,15 @@ import {
     );
   }
   
+  export async function deleteImportedChapter(uid: string, chapterTitle: string) {
+    const snap = await getDocs(collection(db, "users", uid, "importedChapters"));
+  
+    const targets = snap.docs.filter((docSnap) => {
+      const data = docSnap.data() as { title?: string };
+      return data.title === chapterTitle;
+    });
+  
+    await Promise.all(targets.map((docSnap) => deleteDoc(docSnap.ref)));
+  }
+  
   

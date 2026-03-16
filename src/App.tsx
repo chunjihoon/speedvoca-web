@@ -26,7 +26,13 @@ import {
   loadUserStats,
   saveChapterTitle,
   saveImportedChapter,
+  deleteImportedChapter,
+
 } from "./lib/firestore";
+import StatsBar from "./components/StatsBar";
+import SettingsPanel from "./components/SettingsPanel";
+import SectionBlock from "./components/SectionBlock";
+
 
 type VisibleChapterStat = {
   completedSentenceCount?: number;
@@ -59,6 +65,36 @@ export default function App() {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const [settingsMap, setSettingsMap] = useState<Record<string, { randomEnabled?: boolean; fontScale?: number }>>({});
+  const [settingsOpen, setSettingsOpen] = useState(false);
+
+  /** 임시데이타, 추후 수정 예정 */
+  const recommendedLibrary: SheetContent[] = [
+    {
+      name: "Travel English",
+      rows: [
+        { sentence: "Where is the nearest subway station?", translation: "가장 가까운 지하철역이 어디인가요?" },
+        { sentence: "Could I see the menu, please?", translation: "메뉴 좀 볼 수 있을까요?" },
+        { sentence: "How much is this ticket?", translation: "이 티켓 얼마인가요?" },
+      ],
+    },
+    {
+      name: "Office English",
+      rows: [
+        { sentence: "I’ll send you the updated file today.", translation: "오늘 수정된 파일 보내드릴게요." },
+        { sentence: "Could we move this meeting to tomorrow?", translation: "이 회의를 내일로 옮길 수 있을까요?" },
+        { sentence: "Let me double-check and get back to you.", translation: "다시 확인하고 말씀드릴게요." },
+      ],
+    },
+    {
+      name: "Drama Lines",
+      rows: [
+        { sentence: "You don’t have to do this alone.", translation: "이걸 혼자 할 필요는 없어." },
+        { sentence: "I knew something was wrong.", translation: "뭔가 잘못됐다는 걸 알고 있었어." },
+        { sentence: "Tell me what really happened.", translation: "무슨 일이 있었는지 진짜로 말해줘." },
+      ],
+    },
+  ];
+  
 
 
 
@@ -301,6 +337,56 @@ export default function App() {
     await reloadUserData();
   };
 
+  const handleDeleteChapter = async (sheet: SheetContent) => {
+    if (!user) {
+      await loginWithGoogle();
+      return;
+    }
+  
+    if (sheet.name === "Favorites") {
+      alert("Favorites 챕터는 삭제할 수 없습니다.");
+      return;
+    }
+  
+    const isImported = importedSheets.some((item) => item.name === sheet.name);
+  
+    if (!isImported) {
+      alert("기본 제공 챕터는 아직 삭제 대상이 아닙니다. 현재는 import한 챕터만 삭제할 수 있습니다.");
+      return;
+    }
+  
+    const confirmed = window.confirm(`"${sheet.name}" 챕터를 삭제하시겠습니까?`);
+    if (!confirmed) return;
+  
+    await deleteImportedChapter(user.uid, sheet.name);
+    await reloadUserData();
+  
+    if (selectedSheet?.name === sheet.name) {
+      setSelectedSheet(null);
+    }
+  };
+
+  const handleAddRecommended = async (sheet: SheetContent) => {
+    if (!user) {
+      await loginWithGoogle();
+      return;
+    }
+  
+    await saveImportedChapter({
+      uid: user.uid,
+      title: sheet.name,
+      rows: sheet.rows.map((row) => ({
+        sentence: row.sentence,
+        translation: row.translation,
+      })),
+    });
+  
+    await reloadUserData();
+    alert(`"${sheet.name}"가 내 학습 세트에 추가되었습니다.`);
+  };
+  
+  
+
   const handleLogin = async () => {
     await loginWithGoogle();
   };
@@ -356,52 +442,119 @@ export default function App() {
         style={{ display: "none" }}
         onChange={handleImportFileChange}
       />
-      <TopBar
-        soundEnabled={soundEnabled}
-        onToggleSound={handleToggleSound}
-        repeatCount={repeatCount}
-        onChangeRepeatCount={handleChangeRepeatCount}
-        onBackToList={handleExitReader}
-        inReader={!!selectedSheet}
-        voices={voices}
-        selectedVoiceURI={selectedVoiceURI}
-        onChangeVoice={handleChangeVoice}
-        isLoggedIn={!!user}
-        userName={user?.displayName || user?.email || "User"}
-        onLogin={handleLogin}
-        onLogout={handleLogout}
-        onImport={handleImport}
-      />
+
+      <header className="topbar simple-topbar">
+        <div className="topbar-left">
+          <h1>Speed Voca Web</h1>
+        </div>
+      </header>
+
+      {!loading && !authLoading && !error && (
+        <>
+          <StatsBar
+            totalTap={totalStats.totalCompletedSentenceCount}
+            totalNext={totalStats.totalNextCount}
+            totalReplay={totalStats.totalReplayCount}
+            onOpenSettings={() => setSettingsOpen(true)}
+          />
+
+          <SettingsPanel
+            open={settingsOpen}
+            onClose={() => setSettingsOpen(false)}
+            soundEnabled={soundEnabled}
+            onToggleSound={handleToggleSound}
+            repeatCount={repeatCount}
+            onChangeRepeatCount={handleChangeRepeatCount}
+            voices={voices}
+            selectedVoiceURI={selectedVoiceURI}
+            onChangeVoice={handleChangeVoice}
+            isLoggedIn={!!user}
+            userName={user?.displayName || user?.email || "User"}
+            onLogin={handleLogin}
+            onLogout={handleLogout}
+          />
+        </>
+      )}
+
 
       {(loading || authLoading) && <div className="status">로딩 중...</div>}
 
       {!loading && !authLoading && error && <div className="status error">{error}</div>}
 
       {!loading && !authLoading && !error && !selectedSheet && (
-        <>
-          {!user && (
-            <div className="guest-notice">
-              게스트는 기본 챕터 1개만 학습할 수 있습니다. 더 많은 기능은 로그인 후 사용 가능합니다.
-            </div>
-          )}
+        <main className="home-layout">
+          <SectionBlock
+            title={user ? "📚 My Learning Sets" : "📚 Sample Learning Set"}
+            description={
+              user
+                ? "당신이 추가하거나 학습 중인 챕터입니다."
+                : "게스트는 기본 샘플 1개만 학습할 수 있습니다."
+            }
+            variant="primary"
+          >
+            <SheetList
+              sheets={visibleSheets}
+              onSelect={setSelectedSheet}
+              onEditTitle={handleEditTitle}
+              onDelete={handleDeleteChapter}
+              isLoggedIn={!!user}
+              statsMap={visibleStatsMap}
+            />
+          </SectionBlock>
 
-          {!!user && (
-            <div className="global-stats">
-              <span>Total Tap {totalStats.totalCompletedSentenceCount}</span>
-              <span>Total Next {totalStats.totalNextCount}</span>
-              <span>Total Replay {totalStats.totalReplayCount}</span>
-            </div>
-          )}
+          <SectionBlock
+            title="✨ Recommended Learning Sets"
+            description="기본 제공 학습 자료입니다. 로그인하면 원하는 세트를 내 학습 목록에 추가할 수 있습니다."
+            variant="secondary"
+          >
+            <div className="recommended-grid">
+              {recommendedLibrary.map((sheet, index) => {
+                const guestOnlyVisible = index === 0;
+                const locked = !user && !guestOnlyVisible;
 
-          <SheetList
-            sheets={visibleSheets}
-            onSelect={setSelectedSheet}
-            onEditTitle={handleEditTitle}
-            isLoggedIn={!!user}
-            statsMap={visibleStatsMap}
-          />
-        </>
+                return (
+                  <div key={sheet.name} className={`recommended-card ${locked ? "locked" : ""}`}>
+                    <div className="sheet-title">{sheet.name}</div>
+                    <div className="sheet-sub">{sheet.rows.length} sentences</div>
+
+                    <div className="recommended-actions">
+                      {guestOnlyVisible ? (
+                        <button className="card-action primary" onClick={() => setSelectedSheet(sheet)}>
+                          Try Sample
+                        </button>
+                      ) : user ? (
+                        <button className="card-action primary" onClick={() => handleAddRecommended(sheet)}>
+                          Add to My Learning
+                        </button>
+                      ) : (
+                        <button className="card-action" onClick={handleLogin}>
+                          Login to Add
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </SectionBlock>
+
+          <SectionBlock
+            title="📂 Import Your Own Study Material"
+            description="나만의 문장 자료를 엑셀 파일로 불러와서 공부해보세요. 형식은 sentence / translation 두 컬럼입니다."
+            variant="import"
+          >
+            <div className="import-box">
+              <button className="import-main-btn" onClick={handleImport}>
+                Import Excel File
+              </button>
+              <div className="import-format-hint">
+                Example columns: <strong>sentence</strong> | <strong>translation</strong>
+              </div>
+            </div>
+          </SectionBlock>
+        </main>
       )}
+
 
       {!loading && !authLoading && !error && selectedSheet && (
         <ReaderView
