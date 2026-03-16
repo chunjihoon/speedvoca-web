@@ -1,7 +1,7 @@
 import * as XLSX from "xlsx";
 import type { SentenceRow, SheetContent } from "../types/content";
 
-const WORKBOOK_PATH = "/data/speedvoca_data.xlsx";
+const DEFAULT_WORKBOOK_PATH = "/data/speedvoca_data.xlsx";
 
 function normalizeCell(value: unknown): string {
   if (value == null) return "";
@@ -33,8 +33,8 @@ function parseWorkbookFromArrayBuffer(buffer: ArrayBuffer): SheetContent[] {
   return sheets;
 }
 
-export async function loadWorkbook(): Promise<SheetContent[]> {
-  const res = await fetch(WORKBOOK_PATH, { cache: "no-store" });
+export async function loadWorkbook(path = DEFAULT_WORKBOOK_PATH): Promise<SheetContent[]> {
+  const res = await fetch(path, { cache: "no-store" });
   if (!res.ok) {
     throw new Error(`엑셀 파일을 불러오지 못했습니다. (${res.status})`);
   }

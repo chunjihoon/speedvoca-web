@@ -7,6 +7,7 @@ export type SentenceRow = {
   export type SheetContent = {
     name: string;
     rows: SentenceRow[];
+    difficulty?: string;
   };
   
   export type TtsVoiceOption = {

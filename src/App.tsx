@@ -32,7 +32,7 @@ import {
 import StatsBar from "./components/StatsBar";
 import SettingsPanel from "./components/SettingsPanel";
 import SectionBlock from "./components/SectionBlock";
-
+import LoginPromptModal from "./components/LoginPromptModal";
 
 type VisibleChapterStat = {
   completedSentenceCount?: number;
@@ -40,13 +40,15 @@ type VisibleChapterStat = {
   replayCount?: number;
   favoriteCount?: number;
 };
+const FREE_DATA_PATH = "/data/speedvoca-free-data.xlsx";
+const DIFFICULTY_BY_INDEX = ["하", "중하", "중", "중상", "상"];
 
 export default function App() {
   const { user, authLoading } = useAuth();
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [sheets, setSheets] = useState<SheetContent[]>([]);
+  const [recommendedSheets, setRecommendedSheets] = useState<SheetContent[]>([]);
   const [selectedSheet, setSelectedSheet] = useState<SheetContent | null>(null);
   const [soundEnabled, setSoundEnabledState] = useState(getSoundEnabled());
   const [repeatCount, setRepeatCountState] = useState(getRepeatCount());
@@ -66,47 +68,31 @@ export default function App() {
 
   const [settingsMap, setSettingsMap] = useState<Record<string, { randomEnabled?: boolean; fontScale?: number }>>({});
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [loginModalOpen, setLoginModalOpen] = useState(false);
+  const [loginPromptOpen, setLoginPromptOpen] = useState(false);
+  const [loginPromptTitle, setLoginPromptTitle] = useState("로그인이 필요합니다");
+  const [loginPromptDescription, setLoginPromptDescription] = useState(
+    "이 기능은 로그인 후 사용할 수 있습니다."
+  );
 
-  /** 임시데이타, 추후 수정 예정 */
-  const recommendedLibrary: SheetContent[] = [
-    {
-      name: "Travel English",
-      rows: [
-        { sentence: "Where is the nearest subway station?", translation: "가장 가까운 지하철역이 어디인가요?" },
-        { sentence: "Could I see the menu, please?", translation: "메뉴 좀 볼 수 있을까요?" },
-        { sentence: "How much is this ticket?", translation: "이 티켓 얼마인가요?" },
-      ],
-    },
-    {
-      name: "Office English",
-      rows: [
-        { sentence: "I’ll send you the updated file today.", translation: "오늘 수정된 파일 보내드릴게요." },
-        { sentence: "Could we move this meeting to tomorrow?", translation: "이 회의를 내일로 옮길 수 있을까요?" },
-        { sentence: "Let me double-check and get back to you.", translation: "다시 확인하고 말씀드릴게요." },
-      ],
-    },
-    {
-      name: "Drama Lines",
-      rows: [
-        { sentence: "You don’t have to do this alone.", translation: "이걸 혼자 할 필요는 없어." },
-        { sentence: "I knew something was wrong.", translation: "뭔가 잘못됐다는 걸 알고 있었어." },
-        { sentence: "Tell me what really happened.", translation: "무슨 일이 있었는지 진짜로 말해줘." },
-      ],
-    },
-  ];
+  const [manualTitle, setManualTitle] = useState("");
+  const [manualContent, setManualContent] = useState("");
+  const [manualImportLoading, setManualImportLoading] = useState(false);
   
-
-
-
   useEffect(() => {
     async function init() {
       try {
-        const [data, loadedVoices] = await Promise.all([
-          loadWorkbook(),
+        const [recommendedData, loadedVoices] = await Promise.all([
+          loadWorkbook(FREE_DATA_PATH),
           waitForVoices(),
         ]);
-
-        setSheets(data);
+        
+        setRecommendedSheets(
+          recommendedData.map((sheet, index) => ({
+            ...sheet,
+            difficulty: DIFFICULTY_BY_INDEX[index] ?? "기타",
+          }))
+        );
         setVoices(loadedVoices);
 
         const savedVoice = getVoiceURI();
@@ -130,6 +116,15 @@ export default function App() {
 
     init();
   }, []);
+
+  const showLoginPrompt = (
+    title = "로그인이 필요합니다",
+    description = "이 기능은 로그인 후 사용할 수 있습니다."
+  ) => {
+    setLoginPromptTitle(title);
+    setLoginPromptDescription(description);
+    setLoginPromptOpen(true);
+  };
 
   const reloadUserData = async () => {
     if (!user) {
@@ -202,8 +197,7 @@ export default function App() {
   }, [user]);
 
   const visibleSheets = useMemo(() => {
-    const base = user ? [...sheets, ...importedSheets] : sheets.slice(0, 1);
-  
+    const base = user ? [...importedSheets] : recommendedSheets.slice(0, 1);  
     const mapped = base.map((sheet) => {
       const originalName = sheet.name;
       return {
@@ -224,13 +218,13 @@ export default function App() {
     }
   
     return mapped;
-  }, [sheets, importedSheets, titleMap, user, favoriteRows]);
+  }, [recommendedSheets, importedSheets, titleMap, user, favoriteRows]);
   
 
   const rawSheetMap = useMemo(() => {
     const result: Record<string, SheetContent> = {};
   
-    [...sheets, ...importedSheets].forEach((sheet) => {
+    [...recommendedSheets, ...importedSheets].forEach((sheet) => {
       result[sheet.name] = sheet;
       const customTitle = titleMap[sheet.name];
       if (customTitle) {
@@ -250,7 +244,7 @@ export default function App() {
     }
   
     return result;
-  }, [sheets, importedSheets, titleMap, favoriteRows]);
+  }, [recommendedSheets, importedSheets, titleMap, favoriteRows]);
   
 
   const visibleStatsMap = useMemo(() => {
@@ -299,49 +293,56 @@ export default function App() {
     stopSpeech();
   };
 
-  const requireLogin = async () => {
+  const requireLogin = async (
+    title = "로그인이 필요합니다",
+    description = "이 기능은 로그인 후 사용할 수 있습니다."
+  ) => {
     if (user) return true;
-    await loginWithGoogle();
+    showLoginPrompt(title, description);
     return false;
   };
 
   const handleImport = async () => {
-    if (!user) {
-      await loginWithGoogle();
-      return;
-    }
+    const okay = await requireLogin(
+      "학습 자료를 가져오려면 로그인하세요",
+      "엑셀 파일을 가져오고 저장하려면 먼저 로그인해야 합니다."
+    );
+    if (!okay) return;
   
     fileInputRef.current?.click();
   };
   
 
   const handleEditTitle = async (sheet: SheetContent) => {
-    if (!user) {
-      await loginWithGoogle();
-      return;
-    }
+    const okay = await requireLogin(
+      "챕터 이름 변경은 로그인 후 사용 가능합니다",
+      "개인 학습 세트의 제목을 바꾸려면 로그인하세요."
+    );
+    if (!okay || !user) return;
 
     if (sheet.name === "Favorites") {
       alert("Favorites 챕터는 이름을 수정할 수 없습니다.");
       return;
     }
 
-    const originalSheet = rawSheetMap[sheet.name] ?? sheets.find((s) => s.name === sheet.name);
+    const originalSheet = rawSheetMap[sheet.name] ?? recommendedSheets.find((s) => s.name === sheet.name);
     const sourceSheetName = originalSheet?.name ?? sheet.name;
     const currentTitle = titleMap[sourceSheetName] || sourceSheetName;
     const nextTitle = window.prompt("새 챕터 제목을 입력하세요.", currentTitle);
 
-    if (!nextTitle) return;
+    if (!nextTitle?.trim()) return;
 
     await saveChapterTitle(user.uid, sourceSheetName, nextTitle.trim());
     await reloadUserData();
   };
 
-  const handleDeleteChapter = async (sheet: SheetContent) => {
-    if (!user) {
-      await loginWithGoogle();
-      return;
-    }
+const handleDeleteChapter = async (sheet: SheetContent) => {
+  const okay = await requireLogin(
+    "챕터 삭제는 로그인 후 사용 가능합니다",
+    "내 학습 세트에서 챕터를 삭제하려면 로그인하세요."
+  );
+  
+  if (!okay || !user) return;
   
     if (sheet.name === "Favorites") {
       alert("Favorites 챕터는 삭제할 수 없습니다.");
@@ -367,8 +368,15 @@ export default function App() {
   };
 
   const handleAddRecommended = async (sheet: SheetContent) => {
-    if (!user) {
-      await loginWithGoogle();
+    const okay = await requireLogin(
+      "추천 학습 세트를 추가하려면 로그인하세요",
+      "로그인하면 원하는 기본 제공 자료를 My Learning Sets에 추가할 수 있습니다."
+    );
+    if (!okay || !user) return;
+  
+    const alreadyExists = importedSheets.some((item) => item.name === sheet.name);
+    if (alreadyExists) {
+      alert(`"${sheet.name}"는 이미 내 학습 세트에 추가되어 있습니다.`);
       return;
     }
   
@@ -384,10 +392,9 @@ export default function App() {
     await reloadUserData();
     alert(`"${sheet.name}"가 내 학습 세트에 추가되었습니다.`);
   };
-  
-  
 
   const handleLogin = async () => {
+    setLoginPromptOpen(false);
     await loginWithGoogle();
   };
 
@@ -470,8 +477,16 @@ export default function App() {
             onChangeVoice={handleChangeVoice}
             isLoggedIn={!!user}
             userName={user?.displayName || user?.email || "User"}
-            onLogin={handleLogin}
+            onLogin={() => showLoginPrompt("로그인", "Google 계정으로 바로 시작할 수 있습니다.")}
             onLogout={handleLogout}
+          />
+
+          <LoginPromptModal
+            open={loginPromptOpen}
+            title={loginPromptTitle}
+            description={loginPromptDescription}
+            onClose={() => setLoginPromptOpen(false)}
+            onLoginWithGoogle={handleLogin}
           />
         </>
       )}
@@ -508,14 +523,37 @@ export default function App() {
             variant="secondary"
           >
             <div className="recommended-grid">
-              {recommendedLibrary.map((sheet, index) => {
+              {recommendedSheets.map((sheet, index) => {
                 const guestOnlyVisible = index === 0;
                 const locked = !user && !guestOnlyVisible;
+                const alreadyAdded = importedSheets.some((item) => item.name === sheet.name);
+                const progressPercent = Math.max(
+                  0,
+                  Math.min(
+                    100,
+                    Math.round(
+                      ((visibleStatsMap[sheet.name]?.completedSentenceCount ?? 0) / Math.max(sheet.rows.length, 1)) * 100
+                    )
+                  )
+                );
 
                 return (
                   <div key={sheet.name} className={`recommended-card ${locked ? "locked" : ""}`}>
-                    <div className="sheet-title">{sheet.name}</div>
+                    <div className="sheet-card-head">
+                      <div className="sheet-title">{sheet.name}</div>
+                      {sheet.difficulty && <div className="difficulty-badge">{sheet.difficulty}</div>}
+                    </div>
                     <div className="sheet-sub">{sheet.rows.length} sentences</div>
+
+                    <div className="progress-block">
+                      <div className="progress-meta">
+                        <span>Progress</span>
+                        <strong>{progressPercent}%</strong>
+                      </div>
+                      <div className="progress-track">
+                        <div className="progress-fill" style={{ width: `${progressPercent}%` }} />
+                      </div>
+                    </div>
 
                     <div className="recommended-actions">
                       {guestOnlyVisible ? (
@@ -523,11 +561,23 @@ export default function App() {
                           Try Sample
                         </button>
                       ) : user ? (
-                        <button className="card-action primary" onClick={() => handleAddRecommended(sheet)}>
-                          Add to My Learning
+                        <button
+                          className={`card-action primary ${alreadyAdded ? "added" : ""}`}
+                          onClick={() => handleAddRecommended(sheet)}
+                          disabled={alreadyAdded}
+                        >
+                          {alreadyAdded ? "Added" : "Add to My Learning"}
                         </button>
                       ) : (
-                        <button className="card-action" onClick={handleLogin}>
+                        <button
+                          className="card-action"
+                          onClick={() =>
+                            showLoginPrompt(
+                              "로그인 후 더 많은 샘플을 사용할 수 있습니다",
+                              "지금은 첫 번째 샘플만 체험할 수 있습니다. 로그인하면 나머지 자료를 추가할 수 있습니다."
+                            )
+                          }
+                        >
                           Login to Add
                         </button>
                       )}
@@ -564,7 +614,12 @@ export default function App() {
           onExit={handleExitReader}
           voiceURI={selectedVoiceURI}
           isLoggedIn={!!user}
-          onRequireLogin={requireLogin}
+          onRequireLogin={() =>
+            requireLogin(
+              "로그인이 필요한 기능입니다",
+              "즐겨찾기, 랜덤, 글자 크기 저장 같은 개인화 기능은 로그인 후 사용할 수 있습니다."
+            )
+          }
           userId={user?.uid}
           onStatsChanged={reloadUserData}
           chapterSettings={settingsMap[rawSheetMap[selectedSheet.name]?.name ?? selectedSheet.name]}
