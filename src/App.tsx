@@ -68,16 +68,16 @@ export default function App() {
 
   const [settingsMap, setSettingsMap] = useState<Record<string, { randomEnabled?: boolean; fontScale?: number }>>({});
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [loginModalOpen, setLoginModalOpen] = useState(false);
+  //const [loginModalOpen, setLoginModalOpen] = useState(false);
   const [loginPromptOpen, setLoginPromptOpen] = useState(false);
   const [loginPromptTitle, setLoginPromptTitle] = useState("로그인이 필요합니다");
   const [loginPromptDescription, setLoginPromptDescription] = useState(
     "이 기능은 로그인 후 사용할 수 있습니다."
   );
 
-  const [manualTitle, setManualTitle] = useState("");
-  const [manualContent, setManualContent] = useState("");
-  const [manualImportLoading, setManualImportLoading] = useState(false);
+  //const [manualTitle, setManualTitle] = useState("");
+  //const [manualContent, setManualContent] = useState("");
+  //const [manualImportLoading, setManualImportLoading] = useState(false);
   
   useEffect(() => {
     async function init() {
