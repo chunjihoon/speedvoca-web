@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, useRef } from "react";
 import type { SheetContent, TtsVoiceOption } from "./types/content";
 import { loadWorkbook, parseWorkbookFile } from "./lib/workbook";
-import TopBar from "./components/TopBar";
+//import TopBar from "./components/TopBar";
 import SheetList from "./components/SheetList";
 import ReaderView from "./components/ReaderView";
 import {
