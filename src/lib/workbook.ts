@@ -8,6 +8,26 @@ function normalizeCell(value: unknown): string {
   return String(value).trim();
 }
 
+function inferLanguageFromSheetName(sheetName: string): "en-US" | "fr-FR" | "cmn-CN" {
+  const lower = sheetName.toLowerCase();
+
+  if (lower.includes("french") || lower.includes("français") || lower.includes("fr")) {
+    return "fr-FR";
+  }
+
+  if (
+    lower.includes("chinese") ||
+    lower.includes("mandarin") ||
+    lower.includes("중국어") ||
+    lower.includes("cn") ||
+    lower.includes("zh")
+  ) {
+    return "cmn-CN";
+  }
+
+  return "en-US";
+}
+
 function parseWorkbookFromArrayBuffer(buffer: ArrayBuffer): SheetContent[] {
   const workbook = XLSX.read(buffer, { type: "array" });
 
@@ -26,6 +46,7 @@ function parseWorkbookFromArrayBuffer(buffer: ArrayBuffer): SheetContent[] {
 
     return {
       name: sheetName,
+      language: inferLanguageFromSheetName(sheetName),
       rows,
     };
   }).filter((sheet) => sheet.rows.length > 0);

@@ -224,6 +224,7 @@ import {
   export type ImportedChapter = {
     id: string;
     title: string;
+    language: "en-US" | "fr-FR" | "cmn-CN";
     rows: {
       sentence: string;
       translation: string;
@@ -235,9 +236,10 @@ import {
   export async function saveImportedChapter(params: {
     uid: string;
     title: string;
+    language: "en-US" | "fr-FR" | "cmn-CN";
     rows: { sentence: string; translation: string }[];
   }) {
-    const { uid, title, rows } = params;
+    const { uid, title, language, rows } = params;
   
     const chapterId =
       typeof crypto !== "undefined" && "randomUUID" in crypto
@@ -246,6 +248,7 @@ import {
   
     await setDoc(doc(db, "users", uid, "importedChapters", chapterId), {
       title,
+      language,
       rows,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
@@ -261,6 +264,7 @@ import {
     snap.forEach((docSnap) => {
       const data = docSnap.data() as {
         title?: string;
+        language?: "en-US" | "fr-FR" | "cmn-CN";
         rows?: { sentence: string; translation: string }[];
         createdAt?: unknown;
       };
@@ -270,6 +274,7 @@ import {
       items.push({
         id: docSnap.id,
         title: data.title,
+        language: data.language ?? "en-US",
         rows: data.rows.map((row) => ({
           sentence: row.sentence,
           translation: row.translation ?? "",

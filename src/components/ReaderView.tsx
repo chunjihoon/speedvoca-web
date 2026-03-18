@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import type { SheetContent } from "../types/content";
+import type { SheetContent, TtsVoiceOption } from "../types/content";
 import { speakText, stopSpeech } from "../lib/tts";
 import {
     isFavorite,
@@ -25,6 +25,9 @@ type Props = {
     randomEnabled?: boolean;
     fontScale?: number;
   };
+  voices: TtsVoiceOption[];
+  selectedVoiceURI: string | null;
+  onChangeVoice: (voiceURI: string) => void;
   
 };
 
@@ -39,6 +42,9 @@ export default function ReaderView({
     userId,
     onStatsChanged,
     chapterSettings,
+    voices,
+    selectedVoiceURI,
+    onChangeVoice
   }: Props) {
 
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -101,7 +107,7 @@ export default function ReaderView({
     let cancelled = false;
 
     async function run() {
-      await speakText(current.sentence, soundEnabled, 1, voiceURI);
+      await speakText(current.sentence, soundEnabled, 1, voiceURI, sheet.language);
       if (!cancelled) {
         setSpokenCount((prev) => Math.min(prev + 1, repeatCount));
       }
@@ -113,7 +119,7 @@ export default function ReaderView({
       cancelled = true;
       stopSpeech();
     };
-  }, [currentIndex, current?.sentence, repeatCount, soundEnabled, voiceURI]);
+  }, [currentIndex, current?.sentence, repeatCount, soundEnabled, voiceURI, sheet.language]);
 
   useEffect(() => {
     setRandomEnabled(chapterSettings?.randomEnabled ?? false);
@@ -141,32 +147,41 @@ export default function ReaderView({
   const favoriteTargetSheetName = current.sourceSheetName || sheet.name;
 
   const replayOrNext = async () => {
+    const sentenceToSpeak = current.sentence;
+  
     if (canAutoNext) {
-      if (!isLast) {
-        if (isLoggedIn && userId) {
-          await Promise.all([
-            recordNext(userId, statSheetName),
-            recordCompletedTap(userId, statSheetName),
-          ]);
-          await onStatsChanged?.();
-        }
-
-        setCurrentIndex((prev) => prev + 1);
-        setSpokenCount(0);
+      if (isLast) return;
+  
+      // 화면 상태를 먼저 바꾼다
+      setCurrentIndex((prev) => prev + 1);
+      setSpokenCount(0);
+  
+      // 서버 저장은 뒤에서 비동기로 돌린다
+      if (isLoggedIn && userId) {
+        void Promise.all([
+          recordNext(userId, statSheetName),
+          recordCompletedTap(userId, statSheetName),
+        ]).then(() => {
+          void onStatsChanged?.();
+        });
       }
+  
       return;
     }
-
+  
+    // replay도 먼저 현재 문장을 다시 재생
+    await speakText(sentenceToSpeak, soundEnabled, 1, voiceURI, sheet.language);
+    setSpokenCount((prev) => Math.min(prev + 1, repeatCount));
+  
+    // 서버 저장은 뒤에서 비동기로
     if (isLoggedIn && userId) {
-      await Promise.all([
+      void Promise.all([
         recordReplay(userId, statSheetName),
         recordCompletedTap(userId, statSheetName),
-      ]);
-      await onStatsChanged?.();
+      ]).then(() => {
+        void onStatsChanged?.();
+      });
     }
-
-    await speakText(current.sentence, soundEnabled, 1, voiceURI);
-    setSpokenCount((prev) => Math.min(prev + 1, repeatCount));
   };
 
   const goPrev = () => {
@@ -177,17 +192,18 @@ export default function ReaderView({
 
   const forceNext = async () => {
     if (isLast) return;
-
-    if (isLoggedIn && userId) {
-      await Promise.all([
-        recordNext(userId, statSheetName),
-        recordCompletedTap(userId, statSheetName),
-      ]);
-      await onStatsChanged?.();
-    }
-
+  
     setCurrentIndex((prev) => prev + 1);
     setSpokenCount(0);
+  
+    if (isLoggedIn && userId) {
+      void Promise.all([
+        recordNext(userId, statSheetName),
+        recordCompletedTap(userId, statSheetName),
+      ]).then(() => {
+        void onStatsChanged?.();
+      });
+    }
   };
 
   const handleFavorite = async () => {
@@ -282,6 +298,17 @@ export default function ReaderView({
           </button>
           <button className="control-btn" onClick={() => handleFontScale(-0.1)}>-A</button>
           <button className="control-btn" onClick={() => handleFontScale(0.1)}>+A</button>
+          <select
+            className="control-btn"
+            value={selectedVoiceURI ?? ""}
+            onChange={(e) => onChangeVoice(e.target.value)}
+          >
+            {voices.map((voice) => (
+              <option key={voice.voiceURI} value={voice.voiceURI}>
+                {voice.name}
+              </option>
+            ))}
+          </select>
         </div>
 
         <div className="sentence-box">

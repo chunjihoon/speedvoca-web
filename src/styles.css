@@ -656,3 +656,89 @@
     font-size: 13px;
     color: #6b7280;
   }
+
+  .manual-import-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 20px;
+    padding: 22px;
+  }
+  
+  .manual-import-header h3 {
+    margin: 0 0 10px;
+    font-size: 22px;
+  }
+  
+  .manual-import-header p {
+    margin: 0;
+    color: #6b7280;
+    line-height: 1.6;
+  }
+  
+  .manual-import-form {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  
+  .manual-label {
+    font-size: 14px;
+    font-weight: 700;
+    color: #374151;
+  }
+  
+  .manual-input,
+  .manual-textarea {
+    width: 100%;
+    border: 1px solid #d1d5db;
+    border-radius: 14px;
+    padding: 14px 16px;
+    font-size: 15px;
+    outline: none;
+    box-sizing: border-box;
+    background: #fff;
+  }
+  
+  .manual-input:focus,
+  .manual-textarea:focus {
+    border-color: #8b5cf6;
+    box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.12);
+  }
+  
+  .manual-textarea {
+    resize: vertical;
+    min-height: 220px;
+    line-height: 1.6;
+  }
+  
+  .manual-import-help {
+    background: #f9fafb;
+    border-radius: 14px;
+    padding: 14px 16px;
+    color: #4b5563;
+    font-size: 14px;
+  }
+  
+  .manual-import-help ul {
+    margin: 8px 0 0;
+    padding-left: 18px;
+  }
+  
+  .manual-import-actions {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-top: 6px;
+  }
+  
+  .manual-import-suboption {
+    border-top: 1px solid #e5e7eb;
+    padding-top: 16px;
+    color: #6b7280;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }

@@ -6,7 +6,12 @@ export type SentenceRow = {
   
   export type SheetContent = {
     name: string;
-    rows: SentenceRow[];
+    language: ChapterLanguage;
+    rows: {
+      sentence: string;
+      translation: string;
+      sourceSheetName?: string;
+    }[];
     difficulty?: string;
   };
   
@@ -17,3 +22,4 @@ export type SentenceRow = {
     default: boolean;
   };
   
+  export type ChapterLanguage = "en-US" | "fr-FR" | "cmn-CN";

@@ -1,4 +1,4 @@
-import type { TtsVoiceOption } from "../types/content";
+// import type { TtsVoiceOption } from "../types/content";
 
 type Props = {
   open: boolean;
@@ -7,9 +7,9 @@ type Props = {
   onToggleSound: () => void;
   repeatCount: number;
   onChangeRepeatCount: (value: number) => void;
-  voices: TtsVoiceOption[];
-  selectedVoiceURI: string | null;
-  onChangeVoice: (voiceURI: string) => void;
+  // voices: TtsVoiceOption[];
+  // selectedVoiceURI: string | null;
+  // onChangeVoice: (voiceURI: string) => void;
   isLoggedIn: boolean;
   userName: string;
   onLogin: () => void;
@@ -23,9 +23,9 @@ export default function SettingsPanel({
   onToggleSound,
   repeatCount,
   onChangeRepeatCount,
-  voices,
-  selectedVoiceURI,
-  onChangeVoice,
+  // voices,
+  // selectedVoiceURI,
+  // onChangeVoice,
   isLoggedIn,
   userName,
   onLogin,
@@ -65,7 +65,7 @@ export default function SettingsPanel({
           </label>
         </div>
 
-        <div className="settings-section">
+        {/* <div className="settings-section">
           <label className="repeat-wrap voice-wrap">
             Voice
             <select
@@ -80,7 +80,7 @@ export default function SettingsPanel({
               ))}
             </select>
           </label>
-        </div>
+        </div> */}
 
         <div className="settings-section account-block">
           {isLoggedIn ? (

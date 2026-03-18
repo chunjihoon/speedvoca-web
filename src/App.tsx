@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, useRef } from "react";
-import type { SheetContent, TtsVoiceOption } from "./types/content";
+import type { ChapterLanguage, SheetContent, TtsVoiceOption } from "./types/content";
 import { loadWorkbook, parseWorkbookFile } from "./lib/workbook";
 //import TopBar from "./components/TopBar";
 import SheetList from "./components/SheetList";
@@ -7,10 +7,10 @@ import ReaderView from "./components/ReaderView";
 import {
   getRepeatCount,
   getSoundEnabled,
-  getVoiceURI,
+  getVoiceMap,
   setRepeatCount,
   setSoundEnabled,
-  setVoiceURI,
+  setVoiceMap,
 } from "./lib/storage";
 import {
   getDefaultEnglishVoiceURI,
@@ -53,7 +53,8 @@ export default function App() {
   const [soundEnabled, setSoundEnabledState] = useState(getSoundEnabled());
   const [repeatCount, setRepeatCountState] = useState(getRepeatCount());
   const [voices, setVoices] = useState<TtsVoiceOption[]>([]);
-  const [selectedVoiceURI, setSelectedVoiceURIState] = useState<string | null>(getVoiceURI());
+  const [selectedVoiceMap, setSelectedVoiceMap] = useState<Record<string, string | null>>(getVoiceMap());
+  const [manualLanguage, setManualLanguage] = useState<ChapterLanguage>("en-US");
   const [titleMap, setTitleMap] = useState<Record<string, string>>({});
   const [statsMap, setStatsMap] = useState<Record<string, VisibleChapterStat>>({});
   const [totalStats, setTotalStats] = useState({
@@ -75,9 +76,9 @@ export default function App() {
     "이 기능은 로그인 후 사용할 수 있습니다."
   );
 
-  //const [manualTitle, setManualTitle] = useState("");
-  //const [manualContent, setManualContent] = useState("");
-  //const [manualImportLoading, setManualImportLoading] = useState(false);
+  const [manualTitle, setManualTitle] = useState("");
+  const [manualContent, setManualContent] = useState("");
+  const [manualImportLoading, setManualImportLoading] = useState(false);
   
   useEffect(() => {
     async function init() {
@@ -95,18 +96,22 @@ export default function App() {
         );
         setVoices(loadedVoices);
 
-        const savedVoice = getVoiceURI();
-        const validSavedVoice = loadedVoices.some((v) => v.voiceURI === savedVoice);
+        const savedVoiceMap = getVoiceMap();
 
-        if (validSavedVoice && savedVoice) {
-          setSelectedVoiceURIState(savedVoice);
-        } else {
-          const fallback = getDefaultEnglishVoiceURI();
-          if (fallback) {
-            setSelectedVoiceURIState(fallback);
-            setVoiceURI(fallback);
-          }
-        }
+        const validVoiceMap = {
+          "en-US": loadedVoices.some((v) => v.voiceURI === savedVoiceMap["en-US"])
+            ? savedVoiceMap["en-US"]
+            : getDefaultEnglishVoiceURI(),
+          "fr-FR": loadedVoices.some((v) => v.voiceURI === savedVoiceMap["fr-FR"])
+            ? savedVoiceMap["fr-FR"]
+            : "Celine",
+          "cmn-CN": loadedVoices.some((v) => v.voiceURI === savedVoiceMap["cmn-CN"])
+            ? savedVoiceMap["cmn-CN"]
+            : "Zhiyu",
+        };
+        
+        setSelectedVoiceMap(validVoiceMap);
+        setVoiceMap(validVoiceMap);
       } catch (err) {
         setError(err instanceof Error ? err.message : "알 수 없는 오류");
       } finally {
@@ -185,6 +190,7 @@ export default function App() {
     setImportedSheets(
       imported.map((chapter) => ({
         name: chapter.title,
+        language: chapter.language ?? "en-US",
         rows: chapter.rows,
       }))
     );
@@ -209,6 +215,7 @@ export default function App() {
     if (user && favoriteRows.length > 0) {
       mapped.unshift({
         name: "Favorites",
+        language: "en-US",
         rows: favoriteRows.map((row) => ({
           sentence: row.sentence,
           translation: row.translation,
@@ -235,6 +242,7 @@ export default function App() {
     if (favoriteRows.length > 0) {
       result["Favorites"] = {
         name: "Favorites",
+        language: "en-US",
         rows: favoriteRows.map((row) => ({
           sentence: row.sentence,
           translation: row.translation,
@@ -270,6 +278,18 @@ export default function App() {
     return result;
   }, [statsMap, titleMap, favoriteRows]);
 
+  const handleSelectSheet = (sheet: SheetContent) => {
+    const raw = rawSheetMap[sheet.name] ?? sheet;
+  
+    // 학습 시작 시점의 스냅샷으로 고정
+    setSelectedSheet({
+      ...raw,
+      rows: [...raw.rows],
+    });
+  };
+
+
+
   const handleToggleSound = () => {
     const next = !soundEnabled;
     setSoundEnabledState(next);
@@ -288,8 +308,15 @@ export default function App() {
   };
 
   const handleChangeVoice = (voiceURI: string) => {
-    setSelectedVoiceURIState(voiceURI);
-    setVoiceURI(voiceURI);
+    if (!selectedSheet) return;
+  
+    const next = {
+      ...selectedVoiceMap,
+      [selectedSheet.language]: voiceURI,
+    };
+  
+    setSelectedVoiceMap(next);
+    setVoiceMap(next);
     stopSpeech();
   };
 
@@ -310,6 +337,80 @@ export default function App() {
     if (!okay) return;
   
     fileInputRef.current?.click();
+  };
+
+  const parseManualRows = (raw: string) => {
+    return raw
+      .split("\n")
+      .map((line) => line.trim())
+      .filter(Boolean)
+      .map((line, index) => {
+        const parts = line.split("|");
+        if (parts.length < 2) {
+          throw new Error(`${index + 1}번째 줄 형식이 올바르지 않습니다. "sentence | translation" 형식으로 입력하세요.`);
+        }
+  
+        const sentence = parts[0].trim();
+        const translation = parts.slice(1).join("|").trim();
+  
+        if (!sentence || !translation) {
+          throw new Error(`${index + 1}번째 줄에 sentence 또는 translation이 비어 있습니다.`);
+        }
+  
+        return { sentence, translation };
+      });
+  };
+
+  const handleManualImport = async () => {
+    const okay = await requireLogin(
+      "학습 자료를 저장하려면 로그인하세요",
+      "직접 입력한 학습 자료를 저장하고 계속 사용하려면 로그인해야 합니다."
+    );
+    if (!okay || !user) return;
+  
+    const title = manualTitle.trim();
+    if (!title) {
+      alert("챕터 제목을 입력하세요.");
+      return;
+    }
+  
+    if (!manualContent.trim()) {
+      alert('학습 내용을 입력하세요. 각 줄은 "sentence | translation" 형식이어야 합니다.');
+      return;
+    }
+  
+    try {
+      setManualImportLoading(true);
+  
+      const rows = parseManualRows(manualContent);
+  
+      if (!rows.length) {
+        alert("저장할 문장이 없습니다.");
+        return;
+      }
+  
+      await saveImportedChapter({
+        uid: user.uid,
+        title,
+        language: manualLanguage,
+        rows,
+      });
+  
+      await reloadUserData();
+  
+      setManualTitle("");
+      setManualContent("");
+  
+      alert(`"${title}" 챕터가 추가되었습니다. (${rows.length}문장)`);
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "입력한 학습 자료를 저장하는 중 오류가 발생했습니다.";
+      alert(message);
+    } finally {
+      setManualImportLoading(false);
+    }
   };
   
 
@@ -383,6 +484,7 @@ const handleDeleteChapter = async (sheet: SheetContent) => {
     await saveImportedChapter({
       uid: user.uid,
       title: sheet.name,
+      language: sheet.language,
       rows: sheet.rows.map((row) => ({
         sentence: row.sentence,
         translation: row.translation,
@@ -420,6 +522,7 @@ const handleDeleteChapter = async (sheet: SheetContent) => {
         await saveImportedChapter({
           uid: user.uid,
           title: sheet.name,
+          language: sheet.language,
           rows: sheet.rows.map((row) => ({
             sentence: row.sentence,
             translation: row.translation,
@@ -472,9 +575,6 @@ const handleDeleteChapter = async (sheet: SheetContent) => {
             onToggleSound={handleToggleSound}
             repeatCount={repeatCount}
             onChangeRepeatCount={handleChangeRepeatCount}
-            voices={voices}
-            selectedVoiceURI={selectedVoiceURI}
-            onChangeVoice={handleChangeVoice}
             isLoggedIn={!!user}
             userName={user?.displayName || user?.email || "User"}
             onLogin={() => showLoginPrompt("로그인", "Google 계정으로 바로 시작할 수 있습니다.")}
@@ -508,12 +608,12 @@ const handleDeleteChapter = async (sheet: SheetContent) => {
             variant="primary"
           >
             <SheetList
-              sheets={visibleSheets}
-              onSelect={setSelectedSheet}
-              onEditTitle={handleEditTitle}
-              onDelete={handleDeleteChapter}
-              isLoggedIn={!!user}
-              statsMap={visibleStatsMap}
+            sheets={visibleSheets}
+            onSelect={handleSelectSheet}
+            onEditTitle={handleEditTitle}
+            onDelete={handleDeleteChapter}
+            isLoggedIn={!!user}
+            statsMap={visibleStatsMap}
             />
           </SectionBlock>
 
@@ -557,7 +657,7 @@ const handleDeleteChapter = async (sheet: SheetContent) => {
 
                     <div className="recommended-actions">
                       {guestOnlyVisible ? (
-                        <button className="card-action primary" onClick={() => setSelectedSheet(sheet)}>
+                        <button className="card-action primary" onClick={() => handleSelectSheet(sheet)}>
                           Try Sample
                         </button>
                       ) : user ? (
@@ -593,12 +693,83 @@ const handleDeleteChapter = async (sheet: SheetContent) => {
             description="나만의 문장 자료를 엑셀 파일로 불러와서 공부해보세요. 형식은 sentence / translation 두 컬럼입니다."
             variant="import"
           >
-            <div className="import-box">
-              <button className="import-main-btn" onClick={handleImport}>
-                Import Excel File
-              </button>
-              <div className="import-format-hint">
-                Example columns: <strong>sentence</strong> | <strong>translation</strong>
+            <div className="manual-import-panel">
+              <div className="manual-import-header">
+                <h3>Create Your Own Study Material</h3>
+                <p>
+                  문장과 해석을 직접 입력해서 나만의 학습 챕터를 만들 수 있습니다.
+                  <br />
+                  각 줄은 <strong>sentence | translation</strong> 형식으로 입력하세요.
+                </p>
+              </div>
+
+              <div className="manual-import-form">
+                <label className="manual-label">Chapter Title</label>
+                <input
+                  className="manual-input"
+                  type="text"
+                  placeholder="예: Daily Conversation Practice"
+                  value={manualTitle}
+                  onChange={(e) => setManualTitle(e.target.value)}
+                />
+
+                <label className="manual-label">Study Content</label>
+                <textarea
+                  className="manual-textarea"
+                  placeholder={`How are you? | 잘 지내?\nI’m on my way. | 가는 중이야\nLet’s get started. | 시작하자`}
+                  value={manualContent}
+                  onChange={(e) => setManualContent(e.target.value)}
+                  rows={10}
+                />
+
+                <label className="manual-label">Language</label>
+                <select
+                  className="manual-input"
+                  value={manualLanguage}
+                  onChange={(e) => setManualLanguage(e.target.value as ChapterLanguage)}
+                >
+                  <option value="en-US">English</option>
+                  <option value="fr-FR">French</option>
+                  <option value="cmn-CN">Chinese</option>
+                </select>
+
+                <div className="manual-import-help">
+                  <div>입력 규칙</div>
+                  <ul>
+                    <li>한 줄 = 한 문장</li>
+                    <li>형식: sentence | translation</li>
+                    <li>예: I’m exhausted. | 나 너무 지쳤어.</li>
+                  </ul>
+                </div>
+
+                <div className="manual-import-actions">
+                  <button
+                    className="card-action primary"
+                    onClick={handleManualImport}
+                    disabled={manualImportLoading}
+                  >
+                    {manualImportLoading ? "Saving..." : "Save Chapter"}
+                  </button>
+
+                  <button
+                    className="card-action"
+                    type="button"
+                    onClick={() => {
+                      setManualTitle("");
+                      setManualContent("");
+                    }}
+                    disabled={manualImportLoading}
+                  >
+                    Clear
+                  </button>
+                </div>
+              </div>
+
+              <div className="manual-import-suboption">
+                <p>엑셀 파일 가져오기는 보조 기능으로 유지할 수 있습니다.</p>
+                <button className="card-action" onClick={handleImport}>
+                  Import Excel File
+                </button>
               </div>
             </div>
           </SectionBlock>
@@ -608,11 +779,14 @@ const handleDeleteChapter = async (sheet: SheetContent) => {
 
       {!loading && !authLoading && !error && selectedSheet && (
         <ReaderView
-          sheet={rawSheetMap[selectedSheet.name] ?? selectedSheet}
+          sheet={selectedSheet}
           soundEnabled={soundEnabled}
           repeatCount={repeatCount}
           onExit={handleExitReader}
-          voiceURI={selectedVoiceURI}
+          voiceURI={selectedVoiceMap[selectedSheet.language] ?? null}
+          voices={voices.filter((voice) => voice.lang === selectedSheet.language)}
+          selectedVoiceURI={selectedVoiceMap[selectedSheet.language] ?? null}
+          onChangeVoice={handleChangeVoice}
           isLoggedIn={!!user}
           onRequireLogin={() =>
             requireLogin(
@@ -622,7 +796,7 @@ const handleDeleteChapter = async (sheet: SheetContent) => {
           }
           userId={user?.uid}
           onStatsChanged={reloadUserData}
-          chapterSettings={settingsMap[rawSheetMap[selectedSheet.name]?.name ?? selectedSheet.name]}
+          chapterSettings={settingsMap[selectedSheet.name]}
         />
       )}
     </div>

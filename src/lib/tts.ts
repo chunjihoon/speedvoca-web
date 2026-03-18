@@ -1,131 +1,136 @@
 import type { TtsVoiceOption } from "../types/content";
 
-let currentUtterance: SpeechSynthesisUtterance | null = null;
+let currentAudio: HTMLAudioElement | null = null;
 
-function getSynth() {
-  return window.speechSynthesis;
+const API_BASE = import.meta.env.VITE_TTS_API_BASE;
+
+type SpeakRequest = {
+  text: string;
+  language: string;
+  voiceId: string | null;
+  enabled: boolean;
+};
+
+function getDefaultVoiceIdByLanguage(language: string): string | null {
+  const normalized = language.toLowerCase();
+
+  if (normalized.startsWith("en")) return "Joanna";
+  if (normalized.startsWith("fr")) return "Celine";
+  if (normalized.startsWith("cmn") || normalized.startsWith("zh")) return "Zhiyu";
+
+  return "Joanna";
 }
 
 export function stopSpeech() {
-  const synth = getSynth();
-  synth.cancel();
-  currentUtterance = null;
+  if (currentAudio) {
+    currentAudio.pause();
+    currentAudio.currentTime = 0;
+    currentAudio = null;
+  }
 }
 
-export function getVoiceOptions(): TtsVoiceOption[] {
-  return getSynth()
-    .getVoices()
-    .filter((voice) => voice.lang.toLowerCase().startsWith("en"))
-    .map((voice) => ({
-      name: voice.name,
-      lang: voice.lang,
-      voiceURI: voice.voiceURI,
-      default: voice.default,
+export async function getVoiceOptions(language?: string): Promise<TtsVoiceOption[]> {
+  const url = language
+    ? `${API_BASE}/api/tts/voices?language=${encodeURIComponent(language)}`
+    : `${API_BASE}/api/tts/voices`;
+
+  const res = await fetch(url);
+  if (!res.ok) {
+    throw new Error("Failed to fetch voice options.");
+  }
+
+  const data = await res.json();
+
+  if (language) {
+    return (data.voices ?? []).map((voice: any) => ({
+      name: voice.label,
+      lang: voice.language,
+      voiceURI: voice.id,
+      default: false,
     }));
+  }
+
+  const allVoices = Object.values(data.voicesByLanguage ?? {}).flat() as any[];
+
+  return allVoices.map((voice) => ({
+    name: voice.label,
+    lang: voice.language,
+    voiceURI: voice.id,
+    default: false,
+  }));
 }
 
-export function findVoiceByURI(voiceURI: string | null): SpeechSynthesisVoice | null {
-  if (!voiceURI) return null;
-  return getSynth().getVoices().find((voice) => voice.voiceURI === voiceURI) ?? null;
-}
-
-export function waitForVoices(): Promise<TtsVoiceOption[]> {
-  return new Promise((resolve) => {
-    const synth = getSynth();
-
-    const resolveVoices = () => {
-      const voices = getVoiceOptions();
-      if (voices.length > 0) {
-        resolve(voices);
-        return true;
-      }
-      return false;
-    };
-
-    if (resolveVoices()) return;
-
-    const handleVoicesChanged = () => {
-      if (resolveVoices()) {
-        synth.removeEventListener("voiceschanged", handleVoicesChanged);
-      }
-    };
-
-    synth.addEventListener("voiceschanged", handleVoicesChanged);
-
-    setTimeout(() => {
-      if (resolveVoices()) {
-        synth.removeEventListener("voiceschanged", handleVoicesChanged);
-      }
-    }, 1000);
-  });
+export async function waitForVoices(language?: string): Promise<TtsVoiceOption[]> {
+  return getVoiceOptions(language);
 }
 
 export function getDefaultEnglishVoiceURI(): string | null {
-  const voices = getSynth().getVoices();
+  return "Joanna";
+}
 
-  const preferred =
-    voices.find((v) => v.lang.startsWith("en-US") && /Alex|Daniel|David|Google/.test(v.name)) ??
-    voices.find((v) => v.lang.startsWith("en-US")) ??
-    voices.find((v) => v.lang.startsWith("en")) ??
-    voices[0];
-
-  return preferred?.voiceURI ?? null;
+export function findVoiceByURI(voiceURI: string | null): { voiceURI: string } | null {
+  if (!voiceURI) return null;
+  return { voiceURI };
 }
 
 export async function speakText(
   text: string,
   enabled: boolean,
   rate = 1,
-  voiceURI: string | null = null
+  voiceURI: string | null = null,
+  language = "en-US"
 ): Promise<void> {
-  return new Promise((resolve) => {
-    if (!enabled || !text.trim()) {
-      resolve();
-      return;
-    }
+  if (!enabled || !text.trim()) return;
 
-    const synth = getSynth();
+  stopSpeech();
 
-    try {
-      synth.cancel();
-      synth.resume(); // Chrome 꼬임 방지
-    } catch {
-      // ignore
-    }
+  const voiceId = voiceURI || getDefaultVoiceIdByLanguage(language);
 
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = "en-US";
-    utterance.rate = rate;
-    utterance.pitch = 1;
-    utterance.volume = 1;
+  const res = await fetch(`${API_BASE}/api/tts/speak`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      text,
+      language,
+      voiceId,
+      engine: "standard",
+    }),
+  });
 
-    const voice = findVoiceByURI(voiceURI);
-    if (voice) {
-      utterance.voice = voice;
-      utterance.lang = voice.lang;
-    }
+  if (!res.ok) {
+    const errorText = await res.text();
+    throw new Error(`TTS request failed: ${errorText}`);
+  }
 
-    utterance.onend = () => {
-      if (currentUtterance === utterance) currentUtterance = null;
-      resolve();
-    };
+  const data = await res.json();
 
-    utterance.onerror = (event) => {
-      console.error("TTS error:", event);
-      if (currentUtterance === utterance) currentUtterance = null;
-      resolve();
-    };
+  return new Promise((resolve, reject) => {
+    const audio = new Audio(data.audioUrl);
+    currentAudio = audio;
 
-    currentUtterance = utterance;
+    audio.playbackRate = rate;
 
-    // 약간 늦춰서 speak
-    setTimeout(() => {
-      try {
-        synth.speak(utterance);
-      } catch (e) {
-        console.error("speak failed:", e);
-        resolve();
+    audio.onended = () => {
+      if (currentAudio === audio) {
+        currentAudio = null;
       }
-    }, 30);
+      resolve();
+    };
+
+    audio.onerror = () => {
+      if (currentAudio === audio) {
+        currentAudio = null;
+      }
+      reject(new Error("Audio playback failed."));
+    };
+
+    audio.play().catch((error) => {
+      if (currentAudio === audio) {
+        currentAudio = null;
+      }
+      reject(error);
+    });
   });
 }
