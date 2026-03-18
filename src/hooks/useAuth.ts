@@ -8,21 +8,20 @@ export function useAuth() {
   const [authLoading, setAuthLoading] = useState(true);
 
   useEffect(() => {
-    const unsub = onAuthStateChanged(auth, async (nextUser) => {
+    const unsub = onAuthStateChanged(auth, (nextUser) => {
       setUser(nextUser);
-
+      setAuthLoading(false);
+  
       if (nextUser) {
-        await ensureUserProfile({
+        void ensureUserProfile({
           uid: nextUser.uid,
           email: nextUser.email,
           displayName: nextUser.displayName,
           photoURL: nextUser.photoURL,
         });
       }
-
-      setAuthLoading(false);
     });
-
+  
     return () => unsub();
   }, []);
 

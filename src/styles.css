@@ -336,16 +336,16 @@
   }
   
   .section-primary {
-    background: #ffffff;
+    background: #eff6ff;
+    
   }
   
   .section-secondary {
-    background: #f8fafc;
+    background: #f5f3ff;
   }
   
   .section-import {
     background: #fff7ed;
-    border-color: #fdba74;
   }
   
   .section-header h2 {
@@ -742,3 +742,213 @@
     flex-direction: column;
     gap: 10px;
   }
+
+  .stats-topbar {
+    max-width: 960px;
+    margin: 20px auto 0;
+    padding: 20px;
+    background: #f3f4f6;
+    border: 1px solid #d1d5db;
+    border-radius: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+  
+  .stats-main {
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+  
+  .stats-group {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(140px, 1fr));
+    gap: 16px;
+    flex: 1;
+  }
+  
+  .stat-card {
+    background: #eef4ff;
+    border: 1px solid #93c5fd;
+    border-radius: 20px;
+    padding: 20px;
+    text-align: center;
+  }
+  
+  .stat-value {
+    font-size: 36px;
+    font-weight: 800;
+    color: #1d4ed8;
+  }
+  
+  .stat-label {
+    margin-top: 6px;
+    font-size: 16px;
+    color: #1e3a8a;
+  }
+  
+  .level-progress-block {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  
+  .level-progress-meta {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    font-weight: 700;
+    color: #374151;
+  }
+  
+  .progress-track {
+    width: 100%;
+    height: 14px;
+    background: #e5e7eb;
+    border-radius: 999px;
+    overflow: hidden;
+  }
+  
+  .progress-fill {
+    height: 100%;
+    background: #2563eb;
+    border-radius: 999px;
+    transition: width 0.2s ease;
+  }
+
+  @media (max-width: 768px) {
+    .stats-group {
+      grid-template-columns: 1fr 1fr;
+    }
+  
+    .stat-value {
+      font-size: 28px;
+    }
+  }
+
+  .speak-btn {
+    position: relative;
+    overflow: hidden;
+  }
+  
+  .speak-btn-label {
+    position: relative;
+    z-index: 2;
+  }
+  
+  .speak-btn-cooldown-bar {
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    height: 4px;
+    background: rgba(255, 255, 255, 0.7);
+    z-index: 1;
+    transition: width 0.05s linear;
+  }
+  
+  .speak-btn.cooldown,
+  .secondary-btn.cooldown {
+    opacity: 0.75;
+  }
+
+
+
+.topbar.simple-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 20px 24px;
+  background: #fff;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.topbar-left {
+  flex: 0 0 auto;
+}
+
+.topbar-left h1 {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 800;
+}
+
+.topbar-right {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  overflow-x: auto;
+}
+
+.stats-inline-bar {
+  display: inline-flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: nowrap;
+  white-space: nowrap;
+}
+
+.mini-stat {
+  height: 36px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: #eef4ff;
+  border: 1px solid #93c5fd;
+  color: #1d4ed8;
+  font-size: 13px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
+  flex: 0 0 auto;
+}
+
+.mini-progress-horizontal {
+  display: inline-flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+.mini-progress-text {
+  font-size: 12px;
+  font-weight: 700;
+  color: #4b5563;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.mini-progress-track {
+  width: 110px;
+  height: 8px;
+  background: #ffffff;
+  box-shadow: inset 0 1px 2px rgba(0,0,0,0.05);
+  border-radius: 999px;
+  overflow: hidden;
+  flex: 0 0 auto;
+}
+
+.mini-progress-fill {
+  height: 100%;
+  background: #2563eb;
+  border-radius: 999px;
+  transition: width 0.2s ease;
+}
+
+.settings-btn.compact {
+  height: 38px;
+  padding: 0 14px;
+  border-radius: 14px;
+  white-space: nowrap;
+  flex: 0 0 auto;
+}

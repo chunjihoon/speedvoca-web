@@ -33,6 +33,7 @@ import StatsBar from "./components/StatsBar";
 import SettingsPanel from "./components/SettingsPanel";
 import SectionBlock from "./components/SectionBlock";
 import LoginPromptModal from "./components/LoginPromptModal";
+import { calculateTotalXp, getLevelSummary } from "./lib/level";
 
 type VisibleChapterStat = {
   completedSentenceCount?: number;
@@ -40,8 +41,8 @@ type VisibleChapterStat = {
   replayCount?: number;
   favoriteCount?: number;
 };
-const FREE_DATA_PATH = "/data/speedvoca-free-data.xlsx";
-const DIFFICULTY_BY_INDEX = ["하", "중하", "중", "중상", "상"];
+const FREE_DATA_PATH = "/data/Speedvoca-free-data.xlsx";
+const DIFFICULTY_BY_INDEX = ["하", "하", "하", "중하", "중", "중상", "상"];
 
 export default function App() {
   const { user, authLoading } = useAuth();
@@ -79,6 +80,9 @@ export default function App() {
   const [manualTitle, setManualTitle] = useState("");
   const [manualContent, setManualContent] = useState("");
   const [manualImportLoading, setManualImportLoading] = useState(false);
+
+  const [loadedStatsUid, setLoadedStatsUid] = useState<string | null>(null);
+  const [userDataLoading, setUserDataLoading] = useState(false);
   
   useEffect(() => {
     async function init() {
@@ -131,75 +135,76 @@ export default function App() {
     setLoginPromptOpen(true);
   };
 
-  const reloadUserData = async () => {
-    if (!user) {
+  const reloadUserData = async (targetUser = user) => {
+    if (!targetUser) {
       setTitleMap({});
       setStatsMap({});
       setFavoriteRows([]);
       setImportedSheets([]);
       setSettingsMap({});
-      setTotalStats({
-        totalCompletedSentenceCount: 0,
-        totalNextCount: 0,
-        totalReplayCount: 0,
-      });
+      setLoadedStatsUid(null);
+      setUserDataLoading(false);
       return;
     }
 
-    const [meta, stats, favorites, imported] = await Promise.all([
-      loadUserChapterMeta(user.uid),
-      loadUserStats(user.uid),
-      loadFavorites(user.uid),
-      loadImportedChapters(user.uid),
-    ]);
-    
+    try {
+      setUserDataLoading(true);
 
-    const mappedTitles: Record<string, string> = {};
-    const mappedStats: Record<string, VisibleChapterStat> = {};
-    const mappedSettings: Record<string, { randomEnabled?: boolean; fontScale?: number }> = {};
+      const [meta, stats, favorites, imported] = await Promise.all([
+        loadUserChapterMeta(targetUser.uid),
+        loadUserStats(targetUser.uid),
+        loadFavorites(targetUser.uid),
+        loadImportedChapters(targetUser.uid),
+      ]);
 
+      const mappedTitles: Record<string, string> = {};
+      const mappedStats: Record<string, VisibleChapterStat> = {};
+      const mappedSettings: Record<string, { randomEnabled?: boolean; fontScale?: number }> = {};
 
-    Object.entries(meta).forEach(([sheetName, value]) => {
-      if (value.customTitle?.trim()) {
-        mappedTitles[sheetName] = value.customTitle.trim();
-      }
+      Object.entries(meta).forEach(([sheetName, value]) => {
+        if (value.customTitle?.trim()) {
+          mappedTitles[sheetName] = value.customTitle.trim();
+        }
 
-      mappedStats[sheetName] = {
-        completedSentenceCount: value.completedSentenceCount ?? 0,
-        nextCount: value.nextCount ?? 0,
-        replayCount: value.replayCount ?? 0,
-        favoriteCount: value.favoriteCount ?? 0,
-      };
-      mappedSettings[sheetName] = {
-        randomEnabled: value.randomEnabled ?? false,
-        fontScale: value.fontScale ?? 1,
-      };
-      
-    });
+        mappedStats[sheetName] = {
+          completedSentenceCount: value.completedSentenceCount ?? 0,
+          nextCount: value.nextCount ?? 0,
+          replayCount: value.replayCount ?? 0,
+          favoriteCount: value.favoriteCount ?? 0,
+        };
 
-    setTitleMap(mappedTitles);
-    setStatsMap(mappedStats);
-    setFavoriteRows(
-      favorites.map((item) => ({
-        sentence: item.sentence,
-        translation: item.translation,
-        sourceSheetName: item.sheetName,
-      }))
-    );
-    setTotalStats(stats);
-    setImportedSheets(
-      imported.map((chapter) => ({
-        name: chapter.title,
-        language: chapter.language ?? "en-US",
-        rows: chapter.rows,
-      }))
-    );
-    setSettingsMap(mappedSettings);
+        mappedSettings[sheetName] = {
+          randomEnabled: value.randomEnabled ?? false,
+          fontScale: value.fontScale ?? 1,
+        };
+      });
 
+      setTitleMap(mappedTitles);
+      setStatsMap(mappedStats);
+      setFavoriteRows(
+        favorites.map((item) => ({
+          sentence: item.sentence,
+          translation: item.translation,
+          sourceSheetName: item.sheetName,
+        }))
+      );
+      setImportedSheets(
+        imported.map((chapter) => ({
+          name: chapter.title,
+          language: chapter.language ?? "en-US",
+          rows: chapter.rows,
+        }))
+      );
+      setSettingsMap(mappedSettings);
+      setTotalStats(stats);
+      setLoadedStatsUid(targetUser.uid);
+    } finally {
+      setUserDataLoading(false);
+    }
   };
 
   useEffect(() => {
-    reloadUserData();
+    void reloadUserData();
   }, [user]);
 
   const visibleSheets = useMemo(() => {
@@ -278,17 +283,37 @@ export default function App() {
     return result;
   }, [statsMap, titleMap, favoriteRows]);
 
+  const levelSummary = useMemo(() => {
+    const totalXp = calculateTotalXp(
+      totalStats.totalNextCount,
+      totalStats.totalReplayCount
+    );
+  
+    return getLevelSummary(totalXp);
+  }, [totalStats.totalNextCount, totalStats.totalReplayCount]);
+
   const handleSelectSheet = (sheet: SheetContent) => {
     const raw = rawSheetMap[sheet.name] ?? sheet;
   
-    // 학습 시작 시점의 스냅샷으로 고정
+    window.history.pushState({ speedvocaReader: true }, "");
+  
     setSelectedSheet({
       ...raw,
       rows: [...raw.rows],
     });
   };
 
-
+  useEffect(() => {
+    const handlePopState = () => {
+      if (selectedSheet) {
+        stopSpeech();
+        setSelectedSheet(null);
+      }
+    };
+  
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, [selectedSheet]);
 
   const handleToggleSound = () => {
     const next = !soundEnabled;
@@ -305,6 +330,10 @@ export default function App() {
   const handleExitReader = () => {
     stopSpeech();
     setSelectedSheet(null);
+  
+    if (window.history.state?.speedvocaReader) {
+      window.history.back();
+    }
   };
 
   const handleChangeVoice = (voiceURI: string) => {
@@ -541,7 +570,8 @@ const handleDeleteChapter = async (sheet: SheetContent) => {
       }
     }
   };
-  
+
+  const isStatsReady = !user || loadedStatsUid === user.uid;
 
   return (
     <div className="app-shell">
@@ -557,16 +587,36 @@ const handleDeleteChapter = async (sheet: SheetContent) => {
         <div className="topbar-left">
           <h1>Speed Voca Web</h1>
         </div>
+
+        {!loading && !authLoading && !error && isStatsReady && (
+          <div className="topbar-right">
+            <StatsBar
+              currentLevel={levelSummary.currentLevel}
+              xpToNextLevel={levelSummary.xpToNextLevel}
+              totalNext={totalStats.totalNextCount}
+              totalReplay={totalStats.totalReplayCount}
+              progressPercent={levelSummary.progressPercent}
+              currentLevelXp={levelSummary.currentLevelXp}
+              xpRequiredForNextLevel={levelSummary.xpRequiredForNextLevel}
+              onOpenSettings={() => setSettingsOpen(true)}
+              compact
+            />
+          </div>
+        )}
       </header>
 
-      {!loading && !authLoading && !error && (
+      {!loading && !authLoading && !userDataLoading && !error && (
         <>
-          <StatsBar
-            totalTap={totalStats.totalCompletedSentenceCount}
+          {/* <StatsBar
+            currentLevel={levelSummary.currentLevel}
+            xpToNextLevel={levelSummary.xpToNextLevel}
             totalNext={totalStats.totalNextCount}
             totalReplay={totalStats.totalReplayCount}
+            progressPercent={levelSummary.progressPercent}
+            currentLevelXp={levelSummary.currentLevelXp}
+            xpRequiredForNextLevel={levelSummary.xpRequiredForNextLevel}
             onOpenSettings={() => setSettingsOpen(true)}
-          />
+          /> */}
 
           <SettingsPanel
             open={settingsOpen}
@@ -592,7 +642,7 @@ const handleDeleteChapter = async (sheet: SheetContent) => {
       )}
 
 
-      {(loading || authLoading) && <div className="status">로딩 중...</div>}
+      {(loading || authLoading || userDataLoading) && <div className="status">로딩 중...</div>}
 
       {!loading && !authLoading && error && <div className="status error">{error}</div>}
 

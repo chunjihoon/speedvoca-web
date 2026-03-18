@@ -147,6 +147,9 @@ export default function ReaderView({
   const favoriteTargetSheetName = current.sourceSheetName || sheet.name;
 
   const replayOrNext = async () => {
+    if (actionLocked) return;
+    startActionCooldown();
+  
     const sentenceToSpeak = current.sentence;
   
     if (canAutoNext) {
@@ -191,6 +194,9 @@ export default function ReaderView({
   };
 
   const forceNext = async () => {
+    if (actionLocked) return;
+    startActionCooldown();
+
     if (isLast) return;
   
     setCurrentIndex((prev) => prev + 1);
@@ -278,6 +284,29 @@ export default function ReaderView({
     
     await onStatsChanged?.();
   };
+  
+  const ACTION_COOLDOWN_MS = 2000;
+  const [actionLocked, setActionLocked] = useState(false);
+  const [cooldownProgress, setCooldownProgress] = useState(0);
+
+  const startActionCooldown = () => {
+    setActionLocked(true);
+    setCooldownProgress(100);
+  
+    const startedAt = Date.now();
+  
+    const intervalId = window.setInterval(() => {
+      const elapsed = Date.now() - startedAt;
+      const remainingRatio = Math.max(0, 1 - elapsed / ACTION_COOLDOWN_MS);
+      setCooldownProgress(remainingRatio * 100);
+    }, 50);
+  
+    window.setTimeout(() => {
+      window.clearInterval(intervalId);
+      setCooldownProgress(0);
+      setActionLocked(false);
+    }, ACTION_COOLDOWN_MS);
+  };
 
   return (
     <main className="page">
@@ -330,8 +359,24 @@ export default function ReaderView({
         </div>
 
         <div className="speak-wrap">
-          <button className="speak-btn" onClick={replayOrNext}>
-            {canAutoNext ? "Next" : "🔊 Replay"}
+          <button
+            className={`speak-btn ${actionLocked ? "cooldown" : ""}`}
+            onClick={replayOrNext}
+            disabled={actionLocked}
+          >
+            <span className="speak-btn-label">
+              {actionLocked
+                ? "Please wait..."
+                : canAutoNext
+                ? "Next"
+                : "🔊 Replay"}
+            </span>
+            {actionLocked && (
+              <span
+                className="speak-btn-cooldown-bar"
+                style={{ width: `${cooldownProgress}%` }}
+              />
+            )}
           </button>
           <div className="repeat-counter">
             {spokenCount} / {repeatCount}
@@ -342,8 +387,12 @@ export default function ReaderView({
           <button className="secondary-btn" onClick={goPrev} disabled={currentIndex === 0}>
             Prior
           </button>
-          <button className="secondary-btn" onClick={forceNext} disabled={isLast}>
-            Force Next
+          <button
+            className={`secondary-btn ${actionLocked ? "cooldown" : ""}`}
+            onClick={forceNext}
+            disabled={isLast || actionLocked}
+          >
+            {actionLocked ? "Cooling down..." : "Force Next"}
           </button>
         </div>
 

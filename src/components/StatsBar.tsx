@@ -1,37 +1,56 @@
 type Props = {
-    totalTap: number;
-    totalNext: number;
-    totalReplay: number;
-    onOpenSettings: () => void;
-  };
-  
-  export default function StatsBar({
-    totalTap,
-    totalNext,
-    totalReplay,
-    onOpenSettings,
-  }: Props) {
+  currentLevel: number;
+  xpToNextLevel: number;
+  totalNext: number;
+  totalReplay: number;
+  progressPercent: number;
+  currentLevelXp: number;
+  xpRequiredForNextLevel: number;
+  onOpenSettings: () => void;
+  compact?: boolean;
+};
+
+export default function StatsBar({
+  currentLevel,
+  xpToNextLevel,
+  totalNext,
+  totalReplay,
+  progressPercent,
+  currentLevelXp,
+  xpRequiredForNextLevel,
+  onOpenSettings,
+  compact = false,
+}: Props) {
+  if (compact) {
     return (
-      <section className="stats-topbar">
-        <div className="stats-group">
-          <div className="stat-card">
-            <div className="stat-value">{totalTap}</div>
-            <div className="stat-label">Taps</div>
-          </div>
-          <div className="stat-card">
-            <div className="stat-value">{totalNext}</div>
-            <div className="stat-label">Next</div>
-          </div>
-          <div className="stat-card">
-            <div className="stat-value">{totalReplay}</div>
-            <div className="stat-label">Replay</div>
+      <section className="stats-inline-bar">
+        <div className="mini-stat">Lv.{currentLevel}</div>
+        <div className="mini-stat">
+          경험치 {xpRequiredForNextLevel === 0 ? "MAX" : `${currentLevelXp}/${xpRequiredForNextLevel}`}
+          <div className="mini-progress-horizontal">
+            <span className="mini-progress-text">
+              
+            </span>
+            <div className="mini-progress-track">
+              <div
+                className="mini-progress-fill"
+                style={{ width: `${progressPercent}%` }}
+              />
+            </div>
           </div>
         </div>
-  
-        <button className="settings-btn" onClick={onOpenSettings}>
+
+
+
+        <div className="mini-stat">Next {totalNext}</div>
+        <div className="mini-stat">Replay {totalReplay}</div>
+
+        <button className="settings-btn compact" onClick={onOpenSettings}>
           ⚙ Settings
         </button>
       </section>
     );
   }
-  
+
+  return null;
+}
