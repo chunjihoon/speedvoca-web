@@ -12,7 +12,7 @@ type Props = {
 
 export default function StatsBar({
   currentLevel,
-  xpToNextLevel,
+  //xpToNextLevel,
   totalNext,
   totalReplay,
   progressPercent,
