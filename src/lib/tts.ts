@@ -4,12 +4,12 @@ let currentAudio: HTMLAudioElement | null = null;
 
 const API_BASE = import.meta.env.VITE_TTS_API_BASE;
 
-type SpeakRequest = {
-  text: string;
-  language: string;
-  voiceId: string | null;
-  enabled: boolean;
-};
+// type SpeakRequest = {
+//   text: string;
+//   language: string;
+//   voiceId: string | null;
+//   enabled: boolean;
+// };
 
 function getDefaultVoiceIdByLanguage(language: string): string | null {
   const normalized = language.toLowerCase();

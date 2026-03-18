@@ -1,6 +1,6 @@
 const SOUND_ENABLED_KEY = "speedvoca_sound_enabled";
 const REPEAT_COUNT_KEY = "speedvoca_repeat_count";
-const VOICE_URI_KEY = "speedvoca_voice_uri";
+//const VOICE_URI_KEY = "speedvoca_voice_uri";
 
 
 export function getSoundEnabled(): boolean {
