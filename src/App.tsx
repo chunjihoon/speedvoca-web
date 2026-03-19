@@ -86,6 +86,55 @@ export default function App() {
 
   const [loadedStatsUid, setLoadedStatsUid] = useState<string | null>(null);
   const [userDataLoading, setUserDataLoading] = useState(false);
+
+  const DEVELOPER_EMAILS = [import.meta.env.VITE_DEVELOPER_EMAILS];
+  const isDeveloperAccount = !!user?.email && DEVELOPER_EMAILS.includes(user.email);
+
+  const [developerModeEnabled, setDeveloperModeEnabled] = useState(() => {
+    return localStorage.getItem("speedvoca_developer_mode") === "true";
+  });
+
+  useEffect(() => {
+    localStorage.setItem("speedvoca_developer_mode", String(developerModeEnabled));
+  }, [developerModeEnabled]);
+
+  const handleTestLevelUpEffect = () => {
+    setShowLevelUpEffect(true);
+    playLevelUpSound();
+  
+    window.setTimeout(() => {
+      setShowLevelUpEffect(false);
+    }, 2200);
+  };
+
+  const [exitConfirmOpen, setExitConfirmOpen] = useState(false);
+  const selectedSheetRef = useRef<SheetContent | null>(null);
+  useEffect(() => {
+    selectedSheetRef.current = selectedSheet;
+  }, [selectedSheet]);
+
+  const showGlobalLoading =
+  !selectedSheet && (loading || authLoading || userDataLoading);
+
+  useEffect(() => {
+    if (!selectedSheet) return;
+  
+    window.history.pushState({ speedvocaReader: true }, "", window.location.href);
+  }, [selectedSheet]);
+
+  useEffect(() => {
+    const handlePopState = () => {
+      if (!selectedSheetRef.current) return;
+  
+      setExitConfirmOpen(true);
+  
+      // 실제 이탈 막고 현재 상태 복구
+      window.history.pushState({ speedvocaReader: true }, "", window.location.href);
+    };
+  
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, []);
   
   useEffect(() => {
     async function init() {
@@ -305,11 +354,19 @@ export default function App() {
   /** 레벨업 관련 */
   const [showLevelUpEffect, setShowLevelUpEffect] = useState(false);
   const prevLevelRef = useRef(levelSummary.currentLevel);
-  const [, setDebugLevelUpTick] = useState(0);
-
+  const hasInitializedLevelRef = useRef(false);
   useEffect(() => {
-    const prevLevel = prevLevelRef.current;
+    if (user && loadedStatsUid !== user.uid) return;
+  
     const nextLevel = levelSummary.currentLevel;
+  
+    if (!hasInitializedLevelRef.current) {
+      prevLevelRef.current = nextLevel;
+      hasInitializedLevelRef.current = true;
+      return;
+    }
+  
+    const prevLevel = prevLevelRef.current;
   
     if (nextLevel > prevLevel) {
       setShowLevelUpEffect(true);
@@ -321,7 +378,8 @@ export default function App() {
     }
   
     prevLevelRef.current = nextLevel;
-  }, [levelSummary.currentLevel]);
+  }, [levelSummary.currentLevel, loadedStatsUid, user]);
+
 
   const handleSelectSheet = (sheet: SheetContent) => {
     const raw = rawSheetMap[sheet.name] ?? sheet;
@@ -333,18 +391,6 @@ export default function App() {
       rows: [...raw.rows],
     });
   };
-
-  useEffect(() => {
-    const handlePopState = () => {
-      if (selectedSheet) {
-        stopSpeech();
-        setSelectedSheet(null);
-      }
-    };
-  
-    window.addEventListener("popstate", handlePopState);
-    return () => window.removeEventListener("popstate", handlePopState);
-  }, [selectedSheet]);
 
   const handleToggleSound = () => {
     const next = !soundEnabled;
@@ -359,12 +405,17 @@ export default function App() {
   };
 
   const handleExitReader = () => {
+    setExitConfirmOpen(true);
+  };
+  
+  const confirmExitReader = () => {
+    setExitConfirmOpen(false);
     stopSpeech();
     setSelectedSheet(null);
+  };
   
-    if (window.history.state?.speedvocaReader) {
-      window.history.back();
-    }
+  const cancelExitReader = () => {
+    setExitConfirmOpen(false);
   };
 
   const handleChangeVoice = (voiceURI: string) => {
@@ -564,6 +615,8 @@ const handleDeleteChapter = async (sheet: SheetContent) => {
     stopSpeech();
     await logout();
     setSelectedSheet(null);
+    setDeveloperModeEnabled(false);
+    localStorage.removeItem("speedvoca_developer_mode");
   };
 
   const handleImportFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -629,8 +682,6 @@ const handleDeleteChapter = async (sheet: SheetContent) => {
             <StatsBar
               currentLevel={levelSummary.currentLevel}
               xpToNextLevel={levelSummary.xpToNextLevel}
-              totalNext={totalStats.totalNextCount}
-              totalReplay={totalStats.totalReplayCount}
               progressPercent={levelSummary.progressPercent}
               currentLevelXp={levelSummary.currentLevelXp}
               xpRequiredForNextLevel={levelSummary.xpRequiredForNextLevel}
@@ -640,23 +691,6 @@ const handleDeleteChapter = async (sheet: SheetContent) => {
           </div>
         )}
       </header>
-
-      <button
-        className="debug-levelup-btn"
-        onClick={() => {
-          setShowLevelUpEffect(true);
-          playLevelUpSound();
-          setDebugLevelUpTick((prev) => prev + 1);
-
-          window.setTimeout(() => {
-            setShowLevelUpEffect(false);
-          }, 2200);
-        }}
-      >
-        Test Level Up
-      </button>
-
-
 
       {!loading && !authLoading && !userDataLoading && !error && (
         <>
@@ -682,6 +716,12 @@ const handleDeleteChapter = async (sheet: SheetContent) => {
             userName={user?.displayName || user?.email || "User"}
             onLogin={() => showLoginPrompt("로그인", "Google 계정으로 바로 시작할 수 있습니다.")}
             onLogout={handleLogout}
+            totalNext={totalStats.totalNextCount}
+            totalReplay={totalStats.totalReplayCount}
+            isDeveloperAccount={isDeveloperAccount}
+            developerModeEnabled={developerModeEnabled}
+            onToggleDeveloperMode={() => setDeveloperModeEnabled((prev) => !prev)}
+            onTestLevelUpEffect={handleTestLevelUpEffect}
           />
 
           <LoginPromptModal
@@ -695,7 +735,16 @@ const handleDeleteChapter = async (sheet: SheetContent) => {
       )}
 
 
-      {(loading || authLoading || userDataLoading) && <div className="status">로딩 중...</div>}
+      {showGlobalLoading && (
+        <div className="status-overlay">
+          <div className="status-panel">
+            <div className="status-bar-track">
+              <div className="status-bar-fill" />
+            </div>
+            <div className="status-text">Loading...</div>
+          </div>
+        </div>
+      )}
 
       {!loading && !authLoading && error && <div className="status error">{error}</div>}
 
@@ -885,7 +934,6 @@ const handleDeleteChapter = async (sheet: SheetContent) => {
           sheet={selectedSheet}
           soundEnabled={soundEnabled}
           repeatCount={repeatCount}
-          onExit={handleExitReader}
           voiceURI={selectedVoiceMap[selectedSheet.language] ?? null}
           voices={voices.filter((voice) => voice.lang === selectedSheet.language)}
           selectedVoiceURI={selectedVoiceMap[selectedSheet.language] ?? null}
@@ -900,6 +948,10 @@ const handleDeleteChapter = async (sheet: SheetContent) => {
           userId={user?.uid}
           onStatsChanged={reloadUserData}
           chapterSettings={settingsMap[selectedSheet.name]}
+          exitConfirmOpen={exitConfirmOpen}
+          onRequestExit={() => setExitConfirmOpen(true)}
+          onConfirmExit={confirmExitReader}
+          onCancelExit={cancelExitReader}
         />
       )}
     </div>

@@ -40,10 +40,52 @@ export default function SheetList({
 
         return (
           <div key={sheet.name} className="sheet-card-wrap">
-            <div className="sheet-card">
+            <div
+              className="sheet-card clickable"
+              onClick={() => onSelect(sheet)}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  onSelect(sheet);
+                }
+              }}
+            >
             <div className="sheet-card-head">
-              <div className="sheet-title">{sheet.name}</div>
-              {sheet.difficulty && <div className="difficulty-badge">{sheet.difficulty}</div>}
+              <div className="sheet-title-row">
+                <div className="sheet-title">{sheet.name}</div>
+
+                {isLoggedIn && sheet.name !== "Favorites" && (
+                  <button
+                    className="icon-btn"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onEditTitle(sheet);
+                    }}
+                    aria-label="Edit title"
+                  >
+                    ✏️
+                  </button>
+                )}
+              </div>
+
+              <div className="sheet-head-right">
+                {sheet.difficulty && <div className="difficulty-badge">{sheet.difficulty}</div>}
+
+                {showDelete && (
+                  <button
+                    className="icon-btn danger"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onDelete(sheet);
+                    }}
+                    aria-label="Delete chapter"
+                  >
+                    🗑️
+                  </button>
+                )}
+              </div>
             </div>
             <div className="sheet-sub">{sheet.rows.length} sentences</div>
             <div className="progress-block">
@@ -63,20 +105,6 @@ export default function SheetList({
               </div>
 
               {!isLoggedIn && <div className="sheet-badge">Guest</div>}
-            </div>
-
-            <div className="card-actions">
-              <button className="card-action primary" onClick={() => onSelect(sheet)}>
-                Study
-              </button>
-              <button className="card-action" onClick={() => onEditTitle(sheet)}>
-                Edit
-              </button>
-              {showDelete && (
-                <button className="card-action danger" onClick={() => onDelete(sheet)}>
-                  Delete
-                </button>
-              )}
             </div>
           </div>
         );

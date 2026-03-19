@@ -14,6 +14,12 @@ type Props = {
   userName: string;
   onLogin: () => void;
   onLogout: () => void;
+  totalNext: number;
+  totalReplay: number;
+  isDeveloperAccount: boolean;
+  developerModeEnabled: boolean;
+  onToggleDeveloperMode: () => void;
+  onTestLevelUpEffect: () => void;
 };
 
 export default function SettingsPanel({
@@ -30,6 +36,12 @@ export default function SettingsPanel({
   userName,
   onLogin,
   onLogout,
+  totalNext,
+  totalReplay,
+  isDeveloperAccount,
+  developerModeEnabled,
+  onToggleDeveloperMode,
+  onTestLevelUpEffect,
 }: Props) {
   if (!open) return null;
 
@@ -65,22 +77,36 @@ export default function SettingsPanel({
           </label>
         </div>
 
-        {/* <div className="settings-section">
-          <label className="repeat-wrap voice-wrap">
-            Voice
-            <select
-              value={selectedVoiceURI ?? ""}
-              onChange={(e) => onChangeVoice(e.target.value)}
-            >
-              {voices.length === 0 && <option value="">Loading voices...</option>}
-              {voices.map((voice) => (
-                <option key={voice.voiceURI} value={voice.voiceURI}>
-                  {voice.name} ({voice.lang}){voice.default ? " • default" : ""}
-                </option>
-              ))}
-            </select>
-          </label>
-        </div> */}
+        <div className="settings-section">
+          <div className="settings-subtitle">Study Stats</div>
+          <div className="settings-stats">
+            <div>Next: {totalNext}</div>
+            <div>Replay: {totalReplay}</div>
+          </div>
+        </div>
+
+        {isDeveloperAccount && (
+          <div className="settings-section">
+            <div className="settings-subtitle">Developer</div>
+
+            <label className="developer-toggle-row">
+              <span>Developer Mode</span>
+              <input
+                type="checkbox"
+                checked={developerModeEnabled}
+                onChange={onToggleDeveloperMode}
+              />
+            </label>
+
+            {developerModeEnabled && (
+              <div className="developer-tools">
+                <button className="control-btn" onClick={onTestLevelUpEffect}>
+                  레벨업 이펙트 테스트
+                </button>
+              </div>
+            )}
+          </div>
+        )}
 
         <div className="settings-section account-block">
           {isLoggedIn ? (

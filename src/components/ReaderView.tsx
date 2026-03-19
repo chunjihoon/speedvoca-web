@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { SheetContent, TtsVoiceOption } from "../types/content";
 import { speakText, stopSpeech } from "../lib/tts";
 import {
@@ -15,7 +15,6 @@ type Props = {
   sheet: SheetContent;
   soundEnabled: boolean;
   repeatCount: number;
-  onExit: () => void;
   voiceURI: string | null;
   isLoggedIn: boolean;
   onRequireLogin: () => Promise<boolean>;
@@ -28,14 +27,16 @@ type Props = {
   voices: TtsVoiceOption[];
   selectedVoiceURI: string | null;
   onChangeVoice: (voiceURI: string) => void;
-  
+  exitConfirmOpen: boolean;
+  onRequestExit: () => void;
+  onConfirmExit: () => void;
+  onCancelExit: () => void;
 };
 
 export default function ReaderView({
     sheet,
     soundEnabled,
     repeatCount,
-    onExit,
     voiceURI,
     isLoggedIn,
     onRequireLogin,
@@ -44,7 +45,11 @@ export default function ReaderView({
     chapterSettings,
     voices,
     selectedVoiceURI,
-    onChangeVoice
+    onChangeVoice,
+    exitConfirmOpen,
+    onRequestExit,
+    onConfirmExit,
+    onCancelExit,
   }: Props) {
 
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -133,7 +138,7 @@ export default function ReaderView({
         <section className="reader-wrap">
           <h2>{sheet.name}</h2>
           <p>학습할 문장이 없습니다.</p>
-          <button className="primary-btn" onClick={onExit}>
+          <button className="primary-btn" onClick={onRequestExit}>
             Exit
           </button>
         </section>
@@ -230,7 +235,7 @@ export default function ReaderView({
     if (isFavoritesSheet) {
       if (!result.active) {
         if (displayRows.length === 1) {
-          onExit();
+          onRequestExit();
           return;
         }
 
@@ -287,26 +292,32 @@ export default function ReaderView({
   
   const ACTION_COOLDOWN_MS = 2000;
   const [actionLocked, setActionLocked] = useState(false);
-  const [cooldownProgress, setCooldownProgress] = useState(0);
+  const [cooldownToken, setCooldownToken] = useState(0);
+  const cooldownTimeoutRef = useRef<number | null>(null);
 
   const startActionCooldown = () => {
+    if (actionLocked) return;
+
     setActionLocked(true);
-    setCooldownProgress(100);
-  
-    const startedAt = Date.now();
-  
-    const intervalId = window.setInterval(() => {
-      const elapsed = Date.now() - startedAt;
-      const remainingRatio = Math.max(0, 1 - elapsed / ACTION_COOLDOWN_MS);
-      setCooldownProgress(remainingRatio * 100);
-    }, 50);
-  
-    window.setTimeout(() => {
-      window.clearInterval(intervalId);
-      setCooldownProgress(0);
+    setCooldownToken((prev) => prev + 1);
+
+    if (cooldownTimeoutRef.current) {
+      window.clearTimeout(cooldownTimeoutRef.current);
+    }
+
+    cooldownTimeoutRef.current = window.setTimeout(() => {
       setActionLocked(false);
+      cooldownTimeoutRef.current = null;
     }, ACTION_COOLDOWN_MS);
   };
+
+  useEffect(() => {
+    return () => {
+      if (cooldownTimeoutRef.current) {
+        window.clearTimeout(cooldownTimeoutRef.current);
+      }
+    };
+  }, []);
 
   return (
     <main className="page">
@@ -319,9 +330,6 @@ export default function ReaderView({
         </div>
 
         <div className="reader-toolbar">
-          <button className="control-btn" onClick={handleFavorite}>
-            {favoriteActive ? "⭐ Favorited" : "☆ Favorite"}
-          </button>
           <button className="control-btn" onClick={handleToggleRandom} disabled={isFavoritesSheet}>
             {randomEnabled ? "🔀 Random On" : "➡️ Random Off"}
           </button>
@@ -341,6 +349,14 @@ export default function ReaderView({
         </div>
 
         <div className="sentence-box">
+          <button
+            className={`favorite-star-btn ${favoriteActive ? "active" : ""}`}
+            onClick={handleFavorite}
+            aria-label="Toggle favorite"
+          >
+            {favoriteActive ? "★" : "☆"}
+          </button>
+
           <div
             className="sentence"
             style={{ fontSize: `calc(clamp(28px, 5vw, 48px) * ${fontScale})` }}
@@ -373,8 +389,9 @@ export default function ReaderView({
             </span>
             {actionLocked && (
               <span
+                key={cooldownToken}
                 className="speak-btn-cooldown-bar"
-                style={{ width: `${cooldownProgress}%` }}
+                style={{ animationDuration: `${ACTION_COOLDOWN_MS}ms` }}
               />
             )}
           </button>
@@ -396,10 +413,27 @@ export default function ReaderView({
           </button>
         </div>
 
-        <button className="primary-btn exit-btn" onClick={onExit}>
+        <button className="primary-btn exit-btn" onClick={onRequestExit}>
           Exit
         </button>
       </section>
+
+      {exitConfirmOpen && (
+        <div className="confirm-overlay" onClick={onCancelExit}>
+          <div className="confirm-modal" onClick={(e) => e.stopPropagation()}>
+            <h3>학습을 종료하시겠습니까?</h3>
+            <p>지금 나가면 현재 학습 화면이 종료됩니다.</p>
+            <div className="confirm-actions">
+              <button className="secondary-btn" onClick={onCancelExit}>
+                취소
+              </button>
+              <button className="primary-btn" onClick={onConfirmExit}>
+                종료
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }

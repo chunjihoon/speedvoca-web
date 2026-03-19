@@ -1,8 +1,6 @@
 type Props = {
   currentLevel: number;
   xpToNextLevel: number;
-  totalNext: number;
-  totalReplay: number;
   progressPercent: number;
   currentLevelXp: number;
   xpRequiredForNextLevel: number;
@@ -12,9 +10,6 @@ type Props = {
 
 export default function StatsBar({
   currentLevel,
-  //xpToNextLevel,
-  totalNext,
-  totalReplay,
   progressPercent,
   currentLevelXp,
   xpRequiredForNextLevel,
@@ -38,9 +33,6 @@ export default function StatsBar({
           />
         </div>
       </div>
-
-      <div className="stats-item stats-next">Next {totalNext}</div>
-      <div className="stats-item stats-replay">Replay {totalReplay}</div>
 
       <button className="settings-btn compact stats-settings" onClick={onOpenSettings}>
         ⚙ Settings

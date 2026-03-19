@@ -843,10 +843,24 @@
     position: absolute;
     left: 0;
     bottom: 0;
+    width: 100%;
     height: 4px;
     background: rgba(255, 255, 255, 0.7);
     z-index: 1;
-    transition: width 0.05s linear;
+    transform-origin: left center;
+    animation-name: cooldownShrink;
+    animation-timing-function: linear;
+    animation-fill-mode: forwards;
+    will-change: transform;
+  }
+  
+  @keyframes cooldownShrink {
+    from {
+      transform: scaleX(1);
+    }
+    to {
+      transform: scaleX(0);
+    }
   }
   
   .speak-btn.cooldown,
@@ -1166,7 +1180,7 @@
   align-items: center;
   justify-content: center;
   overflow: hidden;
-  background: radial-gradient(circle, rgba(255,255,255,0.06), rgba(0,0,0,0.2));
+  background: radial-gradient(circle, rgba(0,0,0,0.5), rgba(0,0,0,0.35));
   animation: levelupFadeIn 0.2s ease;
 }
 
@@ -1227,12 +1241,12 @@
 }
 
 .levelup-label {
-  font-size: 54px;
+  font-size: 72px;
   font-weight: 900;
   color: #ffe066;
   letter-spacing: 2px;
   text-shadow:
-    0 0 8px rgba(255,255,255,0.95),
+    0 0 10px rgba(255,255,255,0.95),
     0 0 18px rgba(255,224,102,0.9),
     0 0 32px rgba(59,130,246,0.8),
     0 4px 0 #b45309;
@@ -1421,13 +1435,13 @@
 
 /* MOBILE */
 @media (max-width: 900px) {
-  .levelup-label {
-    font-size: 36px;
+  /* .levelup-label {
+    font-size: 72px;
   }
 
   .levelup-level {
-    font-size: 30px;
-  }
+    font-size: 36px;
+  } */
 
   .levelup-ring,
   .levelup-burst {
@@ -1438,5 +1452,171 @@
   .levelup-beam {
     width: 130px;
     height: 320px;
+  }
+}
+
+.settings-subtitle {
+  font-size: 13px;
+  font-weight: 800;
+  color: #6b7280;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+}
+
+.settings-stats {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  font-weight: 700;
+}
+
+.developer-toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-weight: 700;
+}
+
+.developer-tools {
+  margin-top: 12px;
+}
+
+.sheet-card.clickable {
+  cursor: pointer;
+}
+
+.sheet-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.sheet-head-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.icon-btn {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1;
+  padding: 4px;
+  border-radius: 8px;
+}
+
+.icon-btn:hover {
+  background: rgba(0, 0, 0, 0.06);
+}
+
+.icon-btn.danger:hover {
+  background: rgba(220, 38, 38, 0.08);
+}
+
+.sentence-box {
+  position: relative;
+}
+
+.favorite-star-btn {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  z-index: 2;
+  border: none;
+  background: transparent;
+  font-size: 26px;
+  cursor: pointer;
+  line-height: 1;
+}
+
+.favorite-star-btn.active {
+  color: #f59e0b;
+}
+
+.confirm-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(17, 24, 39, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  padding: 20px;
+}
+
+.confirm-modal {
+  width: min(420px, 100%);
+  background: white;
+  border-radius: 20px;
+  padding: 24px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+}
+
+.confirm-modal h3 {
+  margin: 0 0 8px;
+}
+
+.confirm-modal p {
+  margin: 0;
+  color: #6b7280;
+}
+
+.confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.status-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(255, 255, 255, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 3000;
+  pointer-events: none;
+}
+
+.status-panel {
+  width: min(320px, 90%);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.status-bar-track {
+  width: 100%;
+  height: 10px;
+  border-radius: 999px;
+  background: #e5e7eb;
+  overflow: hidden;
+}
+
+.status-bar-fill {
+  width: 40%;
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #60a5fa, #2563eb);
+  animation: statusLoadingSlide 1s ease-in-out infinite;
+}
+
+.status-text {
+  text-align: center;
+  font-weight: 700;
+  color: #4b5563;
+}
+
+@keyframes statusLoadingSlide {
+  0% {
+    transform: translateX(-120%);
+  }
+  100% {
+    transform: translateX(320%);
   }
 }
