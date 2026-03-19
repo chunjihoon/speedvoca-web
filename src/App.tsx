@@ -404,9 +404,9 @@ export default function App() {
     setRepeatCount(value);
   };
 
-  const handleExitReader = () => {
-    setExitConfirmOpen(true);
-  };
+  // const handleExitReader = () => {
+  //   setExitConfirmOpen(true);
+  // };
   
   const confirmExitReader = () => {
     setExitConfirmOpen(false);
