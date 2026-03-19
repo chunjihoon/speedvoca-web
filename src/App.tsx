@@ -23,7 +23,8 @@ import {
   loadFavorites,
   loadImportedChapters,
   loadUserChapterMeta,
-  loadUserStats,
+  //loadUserStats,
+  loadUserStatsWithFallback,
   saveChapterTitle,
   saveImportedChapter,
   deleteImportedChapter,
@@ -33,7 +34,9 @@ import StatsBar from "./components/StatsBar";
 import SettingsPanel from "./components/SettingsPanel";
 import SectionBlock from "./components/SectionBlock";
 import LoginPromptModal from "./components/LoginPromptModal";
+import LevelUpEffect from "./components/LevelUpEffect";
 import { calculateTotalXp, getLevelSummary } from "./lib/level";
+import { playLevelUpSound } from "./lib/levelUpSound";
 
 type VisibleChapterStat = {
   completedSentenceCount?: number;
@@ -135,6 +138,12 @@ export default function App() {
     setLoginPromptOpen(true);
   };
 
+  const EMPTY_TOTAL_STATS = {
+    totalCompletedSentenceCount: 0,
+    totalNextCount: 0,
+    totalReplayCount: 0,
+  };
+
   const reloadUserData = async (targetUser = user) => {
     if (!targetUser) {
       setTitleMap({});
@@ -142,6 +151,7 @@ export default function App() {
       setFavoriteRows([]);
       setImportedSheets([]);
       setSettingsMap({});
+      setTotalStats(EMPTY_TOTAL_STATS);
       setLoadedStatsUid(null);
       setUserDataLoading(false);
       return;
@@ -152,7 +162,7 @@ export default function App() {
 
       const [meta, stats, favorites, imported] = await Promise.all([
         loadUserChapterMeta(targetUser.uid),
-        loadUserStats(targetUser.uid),
+        loadUserStatsWithFallback(targetUser.uid),
         loadFavorites(targetUser.uid),
         loadImportedChapters(targetUser.uid),
       ]);
@@ -291,6 +301,27 @@ export default function App() {
   
     return getLevelSummary(totalXp);
   }, [totalStats.totalNextCount, totalStats.totalReplayCount]);
+
+  /** 레벨업 관련 */
+  const [showLevelUpEffect, setShowLevelUpEffect] = useState(false);
+  const prevLevelRef = useRef(levelSummary.currentLevel);
+  const [debugLevelUpTick, setDebugLevelUpTick] = useState(0);
+
+  useEffect(() => {
+    const prevLevel = prevLevelRef.current;
+    const nextLevel = levelSummary.currentLevel;
+  
+    if (nextLevel > prevLevel) {
+      setShowLevelUpEffect(true);
+      playLevelUpSound();
+  
+      window.setTimeout(() => {
+        setShowLevelUpEffect(false);
+      }, 2200);
+    }
+  
+    prevLevelRef.current = nextLevel;
+  }, [levelSummary.currentLevel]);
 
   const handleSelectSheet = (sheet: SheetContent) => {
     const raw = rawSheetMap[sheet.name] ?? sheet;
@@ -574,6 +605,11 @@ const handleDeleteChapter = async (sheet: SheetContent) => {
   const isStatsReady = !user || loadedStatsUid === user.uid;
 
   return (
+    <>
+    <LevelUpEffect
+      visible={showLevelUpEffect}
+      level={levelSummary.currentLevel}
+    />
     <div className="app-shell">
       <input
         ref={fileInputRef}
@@ -604,6 +640,23 @@ const handleDeleteChapter = async (sheet: SheetContent) => {
           </div>
         )}
       </header>
+
+      <button
+        className="debug-levelup-btn"
+        onClick={() => {
+          setShowLevelUpEffect(true);
+          playLevelUpSound();
+          setDebugLevelUpTick((prev) => prev + 1);
+
+          window.setTimeout(() => {
+            setShowLevelUpEffect(false);
+          }, 2200);
+        }}
+      >
+        Test Level Up
+      </button>
+
+
 
       {!loading && !authLoading && !userDataLoading && !error && (
         <>
@@ -740,18 +793,18 @@ const handleDeleteChapter = async (sheet: SheetContent) => {
 
           <SectionBlock
             title="📂 Import Your Own Study Material"
-            description="나만의 문장 자료를 엑셀 파일로 불러와서 공부해보세요. 형식은 sentence / translation 두 컬럼입니다."
+            description="문장과 해석을 직접 입력해서 나만의 학습 챕터를 만들 수 있습니다. 각 줄은 sentence | translation 형식으로 입력하세요."
             variant="import"
           >
             <div className="manual-import-panel">
-              <div className="manual-import-header">
+              {/* <div className="manual-import-header">
                 <h3>Create Your Own Study Material</h3>
                 <p>
                   문장과 해석을 직접 입력해서 나만의 학습 챕터를 만들 수 있습니다.
                   <br />
                   각 줄은 <strong>sentence | translation</strong> 형식으로 입력하세요.
                 </p>
-              </div>
+              </div> */}
 
               <div className="manual-import-form">
                 <label className="manual-label">Chapter Title</label>
@@ -816,7 +869,7 @@ const handleDeleteChapter = async (sheet: SheetContent) => {
               </div>
 
               <div className="manual-import-suboption">
-                <p>엑셀 파일 가져오기는 보조 기능으로 유지할 수 있습니다.</p>
+                <p>나만의 문장 자료를 엑셀 파일로 불러와서 공부해보세요. (형식: 1열-sentence, 2열-translation)</p>
                 <button className="card-action" onClick={handleImport}>
                   Import Excel File
                 </button>
@@ -850,5 +903,11 @@ const handleDeleteChapter = async (sheet: SheetContent) => {
         />
       )}
     </div>
+    {/* <LevelUpEffect
+      visible={showLevelUpEffect}
+      level={levelSummary.currentLevel}
+    /> */}
+    </>
+
   );
 }

@@ -331,4 +331,57 @@ import {
     await Promise.all(targets.map((docSnap) => deleteDoc(docSnap.ref)));
   }
   
+  export async function loadUserStatsWithFallback(uid: string): Promise<UserStats> {
+    const [userSnap, metaSnap] = await Promise.all([
+      getDoc(doc(db, "users", uid)),
+      getDocs(collection(db, "users", uid, "chapterMeta")),
+    ]);
   
+    const userData = userSnap.data() as Partial<UserStats> | undefined;
+  
+    const rootStats: UserStats = {
+      totalCompletedSentenceCount: userData?.totalCompletedSentenceCount ?? 0,
+      totalNextCount: userData?.totalNextCount ?? 0,
+      totalReplayCount: userData?.totalReplayCount ?? 0,
+    };
+  
+    const metaTotals: UserStats = {
+      totalCompletedSentenceCount: 0,
+      totalNextCount: 0,
+      totalReplayCount: 0,
+    };
+  
+    metaSnap.forEach((docSnap) => {
+      const data = docSnap.data() as ChapterMeta;
+      metaTotals.totalCompletedSentenceCount += data.completedSentenceCount ?? 0;
+      metaTotals.totalNextCount += data.nextCount ?? 0;
+      metaTotals.totalReplayCount += data.replayCount ?? 0;
+    });
+  
+    const shouldFallback =
+      rootStats.totalCompletedSentenceCount === 0 &&
+      rootStats.totalNextCount === 0 &&
+      rootStats.totalReplayCount === 0 &&
+      (
+        metaTotals.totalCompletedSentenceCount > 0 ||
+        metaTotals.totalNextCount > 0 ||
+        metaTotals.totalReplayCount > 0
+      );
+  
+    if (shouldFallback) {
+      await setDoc(
+        doc(db, "users", uid),
+        {
+          totalCompletedSentenceCount: metaTotals.totalCompletedSentenceCount,
+          totalNextCount: metaTotals.totalNextCount,
+          totalReplayCount: metaTotals.totalReplayCount,
+          updatedAt: serverTimestamp(),
+        },
+        { merge: true }
+      );
+  
+      return metaTotals;
+    }
+  
+    return rootStats;
+  }

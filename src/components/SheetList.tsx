@@ -56,9 +56,9 @@ export default function SheetList({
               </div>
             </div>
               <div className="sheet-stats">
-                <span>Tap {stats.completedSentenceCount ?? 0}</span>
-                <span>Next {stats.nextCount ?? 0}</span>
-                <span>Replay {stats.replayCount ?? 0}</span>
+                {/* <span>Tap {stats.completedSentenceCount ?? 0}</span> */}
+                <span>Next {stats.nextCount ?? 0} |</span>
+                <span>Replay {stats.replayCount ?? 0} |</span>
                 <span>Fav {stats.favoriteCount ?? 0}</span>
               </div>
 

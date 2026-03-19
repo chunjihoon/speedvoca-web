@@ -77,7 +77,7 @@ export type LevelSummary = {
     let level = 1;
     let remainingXp = totalXp;
   
-    while (level < 50) {
+    while (level < 60) {
       const required = XP_REQUIRED_BY_TARGET_LEVEL[level + 1];
       if (remainingXp < required) {
         return {
