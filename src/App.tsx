@@ -305,7 +305,7 @@ export default function App() {
   /** 레벨업 관련 */
   const [showLevelUpEffect, setShowLevelUpEffect] = useState(false);
   const prevLevelRef = useRef(levelSummary.currentLevel);
-  const [debugLevelUpTick, setDebugLevelUpTick] = useState(0);
+  const [, setDebugLevelUpTick] = useState(0);
 
   useEffect(() => {
     const prevLevel = prevLevelRef.current;
