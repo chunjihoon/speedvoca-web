@@ -674,7 +674,11 @@ const handleDeleteChapter = async (sheet: SheetContent) => {
 
       <header className="topbar simple-topbar">
         <div className="topbar-left">
-          <h1>Speed Voca Web</h1>
+          <img
+            src="/logo.png"
+            alt="Loopeak Language Training Web"
+            className="topbar-logo"
+          />
         </div>
 
         {!loading && !authLoading && !error && isStatsReady && (
