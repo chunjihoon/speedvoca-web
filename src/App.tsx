@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, useRef } from "react";
-import type { ChapterLanguage, SheetContent, TtsVoiceOption } from "./types/content";
-import { loadWorkbook, parseWorkbookFile } from "./lib/workbook";
+import type { ChapterLanguage, RemoteSheetContent, SheetContent, TtsVoiceOption } from "./types/content";
+import { parseWorkbookFile } from "./lib/workbook";
 //import TopBar from "./components/TopBar";
 import SheetList from "./components/SheetList";
 import ReaderView from "./components/ReaderView";
@@ -38,22 +38,25 @@ import LevelUpEffect from "./components/LevelUpEffect";
 import { calculateTotalXp, getLevelSummary } from "./lib/level";
 import { playLevelUpSound } from "./lib/levelUpSound";
 
+import { recommendedContentMetas, type RecommendedContentMeta } from "./data/recommendContents";
+import { fetchRecommendedSheet } from "./lib/googleSheets";
+
+
+
 type VisibleChapterStat = {
   completedSentenceCount?: number;
   nextCount?: number;
   replayCount?: number;
   favoriteCount?: number;
 };
-const FREE_DATA_PATH = "/data/Speedvoca-free-data.xlsx";
-const DIFFICULTY_BY_INDEX = ["하", "하", "하", "중하", "중", "중상", "상"];
+
+
 
 export default function App() {
   const { user, authLoading } = useAuth();
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [recommendedSheets, setRecommendedSheets] = useState<SheetContent[]>([]);
-  const [selectedSheet, setSelectedSheet] = useState<SheetContent | null>(null);
   const [soundEnabled, setSoundEnabledState] = useState(getSoundEnabled());
   const [repeatCount, setRepeatCountState] = useState(getRepeatCount());
   const [voices, setVoices] = useState<TtsVoiceOption[]>([]);
@@ -93,6 +96,15 @@ export default function App() {
   const [developerModeEnabled, setDeveloperModeEnabled] = useState(() => {
     return localStorage.getItem("speedvoca_developer_mode") === "true";
   });
+
+  /** 기본제공학습자료 */
+  const [selectedSheet, setSelectedSheet] = useState<SheetContent | null>(null);
+  const [isRecommendedLoading, setIsRecommendedLoading] = useState(false);
+  const [recommendedLoadError, setRecommendedLoadError] = useState<string | null>(null);
+  const [recommendedRemoteMap, setRecommendedRemoteMap] = useState<Record<string, RemoteSheetContent>>({});
+  const [loadingRecommendedId, setLoadingRecommendedId] = useState<string | null>(null);
+
+  
 
   useEffect(() => {
     localStorage.setItem("speedvoca_developer_mode", String(developerModeEnabled));
@@ -139,21 +151,11 @@ export default function App() {
   useEffect(() => {
     async function init() {
       try {
-        const [recommendedData, loadedVoices] = await Promise.all([
-          loadWorkbook(FREE_DATA_PATH),
-          waitForVoices(),
-        ]);
-        
-        setRecommendedSheets(
-          recommendedData.map((sheet, index) => ({
-            ...sheet,
-            difficulty: DIFFICULTY_BY_INDEX[index] ?? "기타",
-          }))
-        );
+        const loadedVoices = await waitForVoices();
         setVoices(loadedVoices);
-
+  
         const savedVoiceMap = getVoiceMap();
-
+  
         const validVoiceMap = {
           "en-US": loadedVoices.some((v) => v.voiceURI === savedVoiceMap["en-US"])
             ? savedVoiceMap["en-US"]
@@ -165,7 +167,7 @@ export default function App() {
             ? savedVoiceMap["cmn-CN"]
             : "Zhiyu",
         };
-        
+  
         setSelectedVoiceMap(validVoiceMap);
         setVoiceMap(validVoiceMap);
       } catch (err) {
@@ -174,7 +176,7 @@ export default function App() {
         setLoading(false);
       }
     }
-
+  
     init();
   }, []);
 
@@ -267,7 +269,7 @@ export default function App() {
   }, [user]);
 
   const visibleSheets = useMemo(() => {
-    const base = user ? [...importedSheets] : recommendedSheets.slice(0, 1);  
+    const base = user ? [...importedSheets] : [];
     const mapped = base.map((sheet) => {
       const originalName = sheet.name;
       return {
@@ -289,13 +291,13 @@ export default function App() {
     }
   
     return mapped;
-  }, [recommendedSheets, importedSheets, titleMap, user, favoriteRows]);
+  }, [importedSheets, titleMap, user, favoriteRows]);
   
 
   const rawSheetMap = useMemo(() => {
     const result: Record<string, SheetContent> = {};
   
-    [...recommendedSheets, ...importedSheets].forEach((sheet) => {
+    [...importedSheets].forEach((sheet) => {
       result[sheet.name] = sheet;
       const customTitle = titleMap[sheet.name];
       if (customTitle) {
@@ -316,7 +318,7 @@ export default function App() {
     }
   
     return result;
-  }, [recommendedSheets, importedSheets, titleMap, favoriteRows]);
+  }, [importedSheets, titleMap, favoriteRows]);
   
 
   const visibleStatsMap = useMemo(() => {
@@ -537,7 +539,7 @@ export default function App() {
       return;
     }
 
-    const originalSheet = rawSheetMap[sheet.name] ?? recommendedSheets.find((s) => s.name === sheet.name);
+    const originalSheet = rawSheetMap[sheet.name] ?? sheet;
     const sourceSheetName = originalSheet?.name ?? sheet.name;
     const currentTitle = titleMap[sourceSheetName] || sourceSheetName;
     const nextTitle = window.prompt("새 챕터 제목을 입력하세요.", currentTitle);
@@ -656,6 +658,36 @@ const handleDeleteChapter = async (sheet: SheetContent) => {
   };
 
   const isStatsReady = !user || loadedStatsUid === user.uid;
+
+  async function handleOpenRecommended(meta: RecommendedContentMeta) {
+    try {
+      setRecommendedLoadError(null);
+      setLoadingRecommendedId(meta.id);
+  
+      let remoteSheet = recommendedRemoteMap[meta.id];
+      if (!remoteSheet) {
+        remoteSheet = await fetchRecommendedSheet(meta);
+        setRecommendedRemoteMap((prev) => ({
+          ...prev,
+          [meta.id]: remoteSheet,
+        }));
+      }
+  
+      handleSelectSheet({
+        name: remoteSheet.title,
+        //sheetKey: remoteSheet.id,
+        language: remoteSheet.language as ChapterLanguage,
+        rows: remoteSheet.rows,
+      });
+    } catch (error) {
+      console.error(error);
+      setRecommendedLoadError(
+        error instanceof Error ? error.message : "학습 자료를 불러오지 못했습니다."
+      );
+    } finally {
+      setLoadingRecommendedId(null);
+    }
+  }
 
   return (
     <>
@@ -778,69 +810,78 @@ const handleDeleteChapter = async (sheet: SheetContent) => {
             description="기본 제공 학습 자료입니다. 로그인하면 원하는 세트를 내 학습 목록에 추가할 수 있습니다."
             variant="secondary"
           >
-            <div className="recommended-grid">
-              {recommendedSheets.map((sheet, index) => {
-                const guestOnlyVisible = index === 0;
-                const locked = !user && !guestOnlyVisible;
-                const alreadyAdded = importedSheets.some((item) => item.name === sheet.name);
-                const progressPercent = Math.max(
-                  0,
-                  Math.min(
-                    100,
-                    Math.round(
-                      ((visibleStatsMap[sheet.name]?.completedSentenceCount ?? 0) / Math.max(sheet.rows.length, 1)) * 100
-                    )
-                  )
-                );
+            <div className="recommended-rail">
+              <div className="recommended-grid">
+              {recommendedContentMetas.map((item, index) => {                  
+                  const guestOnlyVisible = item.access === "guest";
+                  const locked = !user && !guestOnlyVisible;
 
-                return (
-                  <div key={sheet.name} className={`recommended-card ${locked ? "locked" : ""}`}>
-                    <div className="sheet-card-head">
-                      <div className="sheet-title">{sheet.name}</div>
-                      {sheet.difficulty && <div className="difficulty-badge">{sheet.difficulty}</div>}
-                    </div>
-                    <div className="sheet-sub">{sheet.rows.length} sentences</div>
+                  const progressPercent = 0; // 초기에는 0으로 두고, 나중에 id 기준 통계 연결
+                  const sentenceCountLabel = "Study set";
 
-                    <div className="progress-block">
-                      <div className="progress-meta">
-                        <span>Progress</span>
-                        <strong>{progressPercent}%</strong>
+                  return (
+                    <div key={item.id} className={`recommended-card ${locked ? "locked" : ""}`}>
+                      <div className="recommended-card-image-wrap">
+                        <img
+                          src={item.imageSrc}
+                          alt={item.title}
+                          className="recommended-card-image"
+                          loading="lazy"
+                        />
                       </div>
-                      <div className="progress-track">
-                        <div className="progress-fill" style={{ width: `${progressPercent}%` }} />
+
+                      <div className="recommended-card-body">
+                        <div className="recommended-card-main">
+                          <div className="recommended-card-title">{item.title}</div>
+                          <div className="recommended-card-count">{item.sentenceCount} sentences</div>
+                        </div>
+
+                        <div className="recommended-actions">
+                          {guestOnlyVisible ? (
+                            <button
+                              className="card-action primary"
+                              onClick={() => handleOpenRecommended(item)}
+                              disabled={loadingRecommendedId === item.id}
+                            >
+                              {loadingRecommendedId === item.id ? "Loading..." : "Try"}
+                            </button>
+                          ) : user ? (
+                            <button
+                              className="card-action primary"
+                              onClick={() => handleOpenRecommended(item)}
+                              disabled={loadingRecommendedId === item.id}
+                            >
+                              {loadingRecommendedId === item.id ? "Loading..." : "Study"}
+                            </button>
+                          ) : (
+                            <button
+                              className="card-action"
+                              onClick={() =>
+                                showLoginPrompt(
+                                  "로그인 후 더 많은 샘플을 사용할 수 있습니다",
+                                  "지금은 첫 번째 샘플만 체험할 수 있습니다. 로그인하면 나머지 자료를 사용할 수 있습니다."
+                                )
+                              }
+                            >
+                              Login
+                            </button>
+                          )}
+                        </div>
+
+                        <div className="recommended-card-progress">
+                          <div className="progress-track">
+                            <div className="progress-fill" style={{ width: `${progressPercent}%` }} />
+                          </div>
+                        </div>
                       </div>
                     </div>
+                  );
+                })}
+              </div>
 
-                    <div className="recommended-actions">
-                      {guestOnlyVisible ? (
-                        <button className="card-action primary" onClick={() => handleSelectSheet(sheet)}>
-                          Try Sample
-                        </button>
-                      ) : user ? (
-                        <button
-                          className={`card-action primary ${alreadyAdded ? "added" : ""}`}
-                          onClick={() => handleAddRecommended(sheet)}
-                          disabled={alreadyAdded}
-                        >
-                          {alreadyAdded ? "Added" : "Add to My Learning"}
-                        </button>
-                      ) : (
-                        <button
-                          className="card-action"
-                          onClick={() =>
-                            showLoginPrompt(
-                              "로그인 후 더 많은 샘플을 사용할 수 있습니다",
-                              "지금은 첫 번째 샘플만 체험할 수 있습니다. 로그인하면 나머지 자료를 추가할 수 있습니다."
-                            )
-                          }
-                        >
-                          Login to Add
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
+              {recommendedLoadError && (
+                <div className="section-error-text">{recommendedLoadError}</div>
+              )}
             </div>
           </SectionBlock>
 
@@ -967,3 +1008,4 @@ const handleDeleteChapter = async (sheet: SheetContent) => {
 
   );
 }
+

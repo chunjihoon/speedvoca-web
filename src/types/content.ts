@@ -23,3 +23,15 @@ export type SentenceRow = {
   };
   
   export type ChapterLanguage = "en-US" | "fr-FR" | "cmn-CN";
+
+  export type SheetRow = {
+    sentence: string;
+    translation: string;
+  };
+  
+  export type RemoteSheetContent = {
+    id: string;
+    title: string;
+    language: string;
+    rows: SheetRow[];
+  };
