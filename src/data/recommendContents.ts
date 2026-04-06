@@ -1,55 +1,169 @@
+import type { LanguageCode, RecommendedContentAccess } from "../types/content";
+export type TargetLanguageCode = Exclude<LanguageCode, "ja">;
+
 export type RecommendedContentMeta = {
-  id: string;
-  title: string;
-  imageSrc: string;
-  spreadsheetId: string;
-  range: string;        // 예: "English Daily!A:B"
-  language: string;     // 예: "en-US"
-  access: "guest" | "login";
-  sentenceCount: number;
-};
+    id: string;
+    title: string;
+    spreadsheetId: string;
+    range: string;
+    sourceSheetId: string;
+    defaultTargetLanguage: TargetLanguageCode;
+    imageSrc: string;
+    sentenceCount: number;
+    access: RecommendedContentAccess;
+    category: "daily" | "work" | "travel";
+  };
 
-const imageModules = import.meta.glob("../assets/recommendData/*.png", {
-    eager: true,
-    import: "default",
-  }) as Record<string, string>;
-
-function getImageByName(fileName: string): string {
-const entry = Object.entries(imageModules).find(([path]) =>
-    path.endsWith(fileName)
-);
-return entry ? entry[1] : "";
-}
+const SPREADSHEET_ID = import.meta.env.VITE_SPREADSHEET_ID;
 
 export const recommendedContentMetas: RecommendedContentMeta[] = [
-  {
-    id: "eng-daily",
-    title: "English Daily Conversation",
-    imageSrc: getImageByName("RecommImg-eng-daily.png"),
-    spreadsheetId: "1LNjGD-nXoDsyhyMwxYlDWCn9Y6_i4PaGfyzOZCcKnO4",
-    range: "eng-daily!A:B",
-    language: "en-US",
-    access: "guest",
-    sentenceCount: 30
-  },
-  {
-    id: "eng-travel",
-    title: "English Travel Conversation",
-    imageSrc: getImageByName("RecommImg-eng-travel.png"),
-    spreadsheetId: "1LNjGD-nXoDsyhyMwxYlDWCn9Y6_i4PaGfyzOZCcKnO4",
-    range: "eng-travel!A:B",
-    language: "en-US",
-    access: "guest",
-    sentenceCount: 30
-  },
-  {
-    id: "eng-work",
-    title: "English Work Conversation",
-    imageSrc: getImageByName("RecommImg-eng-work.png"),
-    spreadsheetId: "1LNjGD-nXoDsyhyMwxYlDWCn9Y6_i4PaGfyzOZCcKnO4",
-    range: "eng-work!A:B",
-    language: "en-US",
-    access: "guest",
-    sentenceCount: 30
-  },
-];
+    // Daily - common sheet: cm-daily
+    {
+      id: "daily-en",
+      title: "English Daily Conversation",
+      spreadsheetId: SPREADSHEET_ID,
+      range: "cm-daily!A:F",
+      sourceSheetId: "cm-daily",
+      defaultTargetLanguage: "en",
+      imageSrc: "/src/assets/recommendData/en-daily.png",
+      sentenceCount: 30,
+      access: "guest",
+      category: "daily",
+    },
+    {
+      id: "daily-zh",
+      title: "Chinese Daily Conversation",
+      spreadsheetId: SPREADSHEET_ID,
+      range: "cm-daily!A:F",
+      sourceSheetId: "cm-daily",
+      defaultTargetLanguage: "zh",
+      imageSrc: "/src/assets/recommendData/zh-daily.png",
+      sentenceCount: 30,
+      access: "login",
+      category: "daily",
+    },
+    {
+      id: "daily-fr",
+      title: "French Daily Conversation",
+      spreadsheetId: SPREADSHEET_ID,
+      range: "cm-daily!A:F",
+      sourceSheetId: "cm-daily",
+      defaultTargetLanguage: "fr",
+      imageSrc: "/src/assets/recommendData/fr-daily.png",
+      sentenceCount: 30,
+      access: "login",
+      category: "daily",
+    },
+    {
+      id: "daily-ko",
+      title: "Korean Daily Conversation",
+      spreadsheetId: SPREADSHEET_ID,
+      range: "cm-daily!A:F",
+      sourceSheetId: "cm-daily",
+      defaultTargetLanguage: "ko",
+      imageSrc: "/src/assets/recommendData/kr-daily.png",
+      sentenceCount: 30,
+      access: "login",
+      category: "daily",
+    },
+  
+    // Travel - separate sheets
+    {
+      id: "travel-en",
+      title: "English Travel Expressions",
+      spreadsheetId: SPREADSHEET_ID,
+      range: "en-travel!A:F",
+      sourceSheetId: "en-travel",
+      defaultTargetLanguage: "en",
+      imageSrc: "/src/assets/recommendData/en-travel.png",
+      sentenceCount: 30,
+      access: "login",
+      category: "travel",
+    },
+    {
+      id: "travel-zh",
+      title: "Chinese Travel Expressions",
+      spreadsheetId: SPREADSHEET_ID,
+      range: "zh-travel!A:F",
+      sourceSheetId: "zh-travel",
+      defaultTargetLanguage: "zh",
+      imageSrc: "/src/assets/recommendData/zh-travel.png",
+      sentenceCount: 30,
+      access: "login",
+      category: "travel",
+    },
+    {
+      id: "travel-fr",
+      title: "French Travel Expressions",
+      spreadsheetId: SPREADSHEET_ID,
+      range: "fr-travel!A:F",
+      sourceSheetId: "fr-travel",
+      defaultTargetLanguage: "fr",
+      imageSrc: "/src/assets/recommendData/fr-travel.png",
+      sentenceCount: 30,
+      access: "login",
+      category: "travel",
+    },
+    {
+      id: "travel-ko",
+      title: "Korean Travel Expressions",
+      spreadsheetId: SPREADSHEET_ID,
+      range: "kr-travel!A:F",
+      sourceSheetId: "kr-travel",
+      defaultTargetLanguage: "ko",
+      imageSrc: "/src/assets/recommendData/kr-travel.png",
+      sentenceCount: 30,
+      access: "login",
+      category: "travel",
+    },
+
+    // Work - common sheet: cm-work
+    {
+        id: "work-en",
+        title: "English Work Expressions",
+        spreadsheetId: SPREADSHEET_ID,
+        range: "cm-work!A:F",
+        sourceSheetId: "cm-work",
+        defaultTargetLanguage: "en",
+        imageSrc: "/src/assets/recommendData/en-work.png",
+        sentenceCount: 30,
+        access: "login",
+        category: "work",
+      },
+      {
+        id: "work-zh",
+        title: "Chinese Work Expressions",
+        spreadsheetId: SPREADSHEET_ID,
+        range: "cm-work!A:F",
+        sourceSheetId: "cm-work",
+        defaultTargetLanguage: "zh",
+        imageSrc: "/src/assets/recommendData/zh-work.png",
+        sentenceCount: 30,
+        access: "login",
+        category: "work",
+      },
+      {
+        id: "work-fr",
+        title: "French Work Expressions",
+        spreadsheetId: SPREADSHEET_ID,
+        range: "cm-work!A:F",
+        sourceSheetId: "cm-work",
+        defaultTargetLanguage: "fr",
+        imageSrc: "/src/assets/recommendData/fr-work.png",
+        sentenceCount: 30,
+        access: "login",
+        category: "work",
+      },
+      {
+        id: "work-ko",
+        title: "Korean Work Expressions",
+        spreadsheetId: SPREADSHEET_ID,
+        range: "cm-work!A:F",
+        sourceSheetId: "cm-work",
+        defaultTargetLanguage: "ko",
+        imageSrc: "/src/assets/recommendData/kr-work.png",
+        sentenceCount: 30,
+        access: "login",
+        category: "work",
+      },
+  ];

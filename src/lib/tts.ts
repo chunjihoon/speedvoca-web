@@ -4,19 +4,13 @@ let currentAudio: HTMLAudioElement | null = null;
 
 const API_BASE = import.meta.env.VITE_TTS_API_BASE;
 
-// type SpeakRequest = {
-//   text: string;
-//   language: string;
-//   voiceId: string | null;
-//   enabled: boolean;
-// };
-
 function getDefaultVoiceIdByLanguage(language: string): string | null {
   const normalized = language.toLowerCase();
 
   if (normalized.startsWith("en")) return "Joanna";
   if (normalized.startsWith("fr")) return "Celine";
   if (normalized.startsWith("cmn") || normalized.startsWith("zh")) return "Zhiyu";
+  if (normalized.startsWith("ko")) return "Seoyeon";
 
   return "Joanna";
 }
@@ -66,6 +60,10 @@ export async function waitForVoices(language?: string): Promise<TtsVoiceOption[]
 
 export function getDefaultEnglishVoiceURI(): string | null {
   return "Joanna";
+}
+
+export function getDefaultKoreanVoiceURI(): string | null {
+  return "Seoyeon";
 }
 
 export function findVoiceByURI(voiceURI: string | null): { voiceURI: string } | null {

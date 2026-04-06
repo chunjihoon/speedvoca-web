@@ -773,6 +773,14 @@ textarea::placeholder {
   background: rgba(103, 213, 95, 0.22);
 }
 
+.control-btn {
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+
+
 .primary-btn,
 .card-action.primary {
   background: var(--c500);
@@ -2012,3 +2020,43 @@ textarea::placeholder {
 
 /* LEVEL UP EFFECT 2026.04.03 END */
 
+/* 2026.04.06 */ 
+.reader-language-toolbar {
+  width: 100%;
+  padding: 12px 16px 0;
+  box-sizing: border-box;
+}
+
+.reader-language-toolbar-inner {
+  max-width: 980px;
+  margin: 0 auto;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+
+.reader-language-field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: #d9d9d9;
+}
+
+.reader-language-field select {
+  min-width: 140px;
+  height: 38px;
+  padding: 0 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.06);
+  color: #fff;
+  outline: none;
+}
+
+.reader-language-field select option {
+  color: #111;
+}
+/* 2026.04.06 */ 

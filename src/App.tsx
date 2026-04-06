@@ -1,6 +1,12 @@
 import { useEffect, useMemo, useState, useRef } from "react";
-import type { ChapterLanguage, RemoteSheetContent, SheetContent, TtsVoiceOption } from "./types/content";
-import { parseWorkbookFile } from "./lib/workbook";
+import type {
+  ChapterLanguage,
+  SheetContent,
+  TtsVoiceOption,
+  LanguageCode,
+  MultilingualRemoteSheetContent,
+  RecommendedStudySession,
+} from "./types/content";import { parseWorkbookFile } from "./lib/workbook";
 //import TopBar from "./components/TopBar";
 import SheetList from "./components/SheetList";
 import ReaderView from "./components/ReaderView";
@@ -12,6 +18,7 @@ import {
   setSoundEnabled,
   setVoiceMap,
 } from "./lib/storage";
+import type { VoiceMap } from "./lib/storage";
 import {
   getDefaultEnglishVoiceURI,
   stopSpeech,
@@ -41,7 +48,7 @@ import { playLevelUpSound } from "./lib/levelUpSound";
 import { recommendedContentMetas, type RecommendedContentMeta } from "./data/recommendContents";
 import { fetchRecommendedSheet } from "./lib/googleSheets";
 
-
+type TargetLanguageCode = Exclude<LanguageCode, "ja">;
 
 type VisibleChapterStat = {
   completedSentenceCount?: number;
@@ -49,6 +56,23 @@ type VisibleChapterStat = {
   replayCount?: number;
   favoriteCount?: number;
 };
+
+function toChapterLanguage(lang: TargetLanguageCode): ChapterLanguage {
+  switch (lang) {
+    case "en":
+      return "en-US";
+    case "zh":
+      return "cmn-CN";
+    case "fr":
+      return "fr-FR";
+    case "ko":
+      return "ko-KR";
+  }
+}
+
+function getFallbackTranslationLanguage(target: TargetLanguageCode): LanguageCode {
+  return target === "ko" ? "en" : "ko";
+}
 
 
 
@@ -60,7 +84,7 @@ export default function App() {
   const [soundEnabled, setSoundEnabledState] = useState(getSoundEnabled());
   const [repeatCount, setRepeatCountState] = useState(getRepeatCount());
   const [voices, setVoices] = useState<TtsVoiceOption[]>([]);
-  const [selectedVoiceMap, setSelectedVoiceMap] = useState<Record<string, string | null>>(getVoiceMap());
+  const [selectedVoiceMap, setSelectedVoiceMap] = useState<VoiceMap>(getVoiceMap());  
   const [manualLanguage, setManualLanguage] = useState<ChapterLanguage>("en-US");
   const [titleMap, setTitleMap] = useState<Record<string, string>>({});
   const [statsMap, setStatsMap] = useState<Record<string, VisibleChapterStat>>({});
@@ -99,8 +123,13 @@ export default function App() {
 
   /** 기본제공학습자료 */
   const [selectedSheet, setSelectedSheet] = useState<SheetContent | null>(null);
+  const [selectedRecommendedSession, setSelectedRecommendedSession] =
+    useState<RecommendedStudySession | null>(null);
+  
   const [recommendedLoadError, setRecommendedLoadError] = useState<string | null>(null);
-  const [recommendedRemoteMap, setRecommendedRemoteMap] = useState<Record<string, RemoteSheetContent>>({});
+  const [recommendedRemoteMap, setRecommendedRemoteMap] = useState<
+    Record<string, MultilingualRemoteSheetContent>
+  >({});
   const [loadingRecommendedId, setLoadingRecommendedId] = useState<string | null>(null);
 
   
@@ -119,19 +148,21 @@ export default function App() {
   };
 
   const [exitConfirmOpen, setExitConfirmOpen] = useState(false);
-  const selectedSheetRef = useRef<SheetContent | null>(null);
-  useEffect(() => {
-    selectedSheetRef.current = selectedSheet;
-  }, [selectedSheet]);
+  const activeReaderOpen = !!selectedSheet || !!selectedRecommendedSession;
 
+  const selectedSheetRef = useRef<boolean>(false);
+  useEffect(() => {
+    selectedSheetRef.current = activeReaderOpen;
+  }, [activeReaderOpen]);
+  
   const showGlobalLoading =
-  !selectedSheet && (loading || authLoading || userDataLoading);
-
+    !activeReaderOpen && (loading || authLoading || userDataLoading);
+  
   useEffect(() => {
-    if (!selectedSheet) return;
+    if (!activeReaderOpen) return;
   
     window.history.pushState({ speedvocaReader: true }, "", window.location.href);
-  }, [selectedSheet]);
+  }, [activeReaderOpen]);
 
   useEffect(() => {
     const handlePopState = () => {
@@ -155,7 +186,7 @@ export default function App() {
   
         const savedVoiceMap = getVoiceMap();
   
-        const validVoiceMap = {
+        const validVoiceMap: VoiceMap = {
           "en-US": loadedVoices.some((v) => v.voiceURI === savedVoiceMap["en-US"])
             ? savedVoiceMap["en-US"]
             : getDefaultEnglishVoiceURI(),
@@ -165,6 +196,9 @@ export default function App() {
           "cmn-CN": loadedVoices.some((v) => v.voiceURI === savedVoiceMap["cmn-CN"])
             ? savedVoiceMap["cmn-CN"]
             : "Zhiyu",
+          "ko-KR": loadedVoices.some((v) => v.voiceURI === savedVoiceMap["ko-KR"])
+            ? savedVoiceMap["ko-KR"]
+            : "Seoyeon",
         };
   
         setSelectedVoiceMap(validVoiceMap);
@@ -352,6 +386,23 @@ export default function App() {
     return getLevelSummary(totalXp);
   }, [totalStats.totalNextCount, totalStats.totalReplayCount]);
 
+  const activeDisplaySheet = useMemo<SheetContent | null>(() => {
+    if (selectedRecommendedSession) {
+      return {
+        name: selectedRecommendedSession.title,
+        language: toChapterLanguage(selectedRecommendedSession.targetLanguage),
+        rows: selectedRecommendedSession.rows
+          .map((row) => ({
+            sentence: row.texts[selectedRecommendedSession.targetLanguage]?.trim() ?? "",
+            translation: row.texts[selectedRecommendedSession.translationLanguage]?.trim() ?? "",
+          }))
+          .filter((row) => row.sentence.length > 0),
+      };
+    }
+  
+    return selectedSheet;
+  }, [selectedRecommendedSession, selectedSheet]);
+
   /** 레벨업 관련 */
   const [showLevelUpEffect, setShowLevelUpEffect] = useState(false);
   const prevLevelRef = useRef(levelSummary.currentLevel);
@@ -387,11 +438,27 @@ export default function App() {
   
     window.history.pushState({ speedvocaReader: true }, "");
   
+    setSelectedRecommendedSession(null);
     setSelectedSheet({
       ...raw,
       rows: [...raw.rows],
     });
   };
+
+  
+  const handleChangeRecommendedTranslationLanguage = (nextTranslation: LanguageCode) => {
+    setSelectedRecommendedSession((prev) => {
+      if (!prev) return prev;
+      if (prev.targetLanguage === nextTranslation) return prev;
+  
+      return {
+        ...prev,
+        translationLanguage: nextTranslation,
+      };
+    });
+  };
+
+
 
   const handleToggleSound = () => {
     const next = !soundEnabled;
@@ -413,6 +480,7 @@ export default function App() {
     setExitConfirmOpen(false);
     stopSpeech();
     setSelectedSheet(null);
+    setSelectedRecommendedSession(null);
   };
   
   const cancelExitReader = () => {
@@ -420,11 +488,11 @@ export default function App() {
   };
 
   const handleChangeVoice = (voiceURI: string) => {
-    if (!selectedSheet) return;
+    if (!activeDisplaySheet) return;
   
-    const next = {
+    const next: VoiceMap = {
       ...selectedVoiceMap,
-      [selectedSheet.language]: voiceURI,
+      [activeDisplaySheet.language]: voiceURI,
     };
   
     setSelectedVoiceMap(next);
@@ -616,6 +684,7 @@ const handleDeleteChapter = async (sheet: SheetContent) => {
     stopSpeech();
     await logout();
     setSelectedSheet(null);
+    setSelectedRecommendedSession(null);
     setDeveloperModeEnabled(false);
     localStorage.removeItem("speedvoca_developer_mode");
   };
@@ -637,7 +706,7 @@ const handleDeleteChapter = async (sheet: SheetContent) => {
           uid: user.uid,
           title: sheet.name,
           language: sheet.language,
-          rows: sheet.rows.map((row) => ({
+          rows: sheet.rows.map((row:any) => ({
             sentence: row.sentence,
             translation: row.translation,
           })),
@@ -663,21 +732,26 @@ const handleDeleteChapter = async (sheet: SheetContent) => {
       setRecommendedLoadError(null);
       setLoadingRecommendedId(meta.id);
   
-      let remoteSheet = recommendedRemoteMap[meta.id];
+      let remoteSheet = recommendedRemoteMap[meta.sourceSheetId];
       if (!remoteSheet) {
         remoteSheet = await fetchRecommendedSheet(meta);
         setRecommendedRemoteMap((prev) => ({
           ...prev,
-          [meta.id]: remoteSheet,
+          [meta.sourceSheetId]: remoteSheet!,
         }));
       }
   
-      handleSelectSheet({
-        name: remoteSheet.title,
-        //sheetKey: remoteSheet.id,
-        language: remoteSheet.language as ChapterLanguage,
+      setSelectedSheet(null);
+      setSelectedRecommendedSession({
+        id: meta.id,
+        title: meta.title,
+        sourceSheetId: meta.sourceSheetId,
         rows: remoteSheet.rows,
+        targetLanguage: meta.defaultTargetLanguage,
+        translationLanguage: getFallbackTranslationLanguage(meta.defaultTargetLanguage),
       });
+  
+      window.history.pushState({ speedvocaReader: true }, "");
     } catch (error) {
       console.error(error);
       setRecommendedLoadError(
@@ -783,7 +857,7 @@ const handleDeleteChapter = async (sheet: SheetContent) => {
 
       {!loading && !authLoading && error && <div className="status error">{error}</div>}
 
-      {!loading && !authLoading && !error && !selectedSheet && (
+      {!loading && !authLoading && !error && !activeReaderOpen && (        
         <main className="home-layout">
           <SectionBlock
             title={user ? "📚 My Learning Sets" : "📚 Sample Learning Set"}
@@ -818,6 +892,9 @@ const handleDeleteChapter = async (sheet: SheetContent) => {
                   const progressPercent = 0; // 초기에는 0으로 두고, 나중에 id 기준 통계 연결
                   //const sentenceCountLabel = "Study set";
 
+                  const loadedCount =
+                  recommendedRemoteMap[item.sourceSheetId]?.rows.length ?? item.sentenceCount ?? 0;
+
                   return (
                     <div key={item.id} className={`recommended-card ${locked ? "locked" : ""}`}>
                       <div className="recommended-card-image-wrap">
@@ -832,7 +909,7 @@ const handleDeleteChapter = async (sheet: SheetContent) => {
                       <div className="recommended-card-body">
                         <div className="recommended-card-main">
                           <div className="recommended-card-title">{item.title}</div>
-                          <div className="recommended-card-count">{item.sentenceCount} sentences</div>
+                          <div className="recommended-card-count">{loadedCount} sentences</div>
                         </div>
 
                         <div className="recommended-actions">
@@ -927,6 +1004,7 @@ const handleDeleteChapter = async (sheet: SheetContent) => {
                   <option value="en-US">English</option>
                   <option value="fr-FR">French</option>
                   <option value="cmn-CN">Chinese</option>
+                  <option value="ko-KR">Korean</option>
                 </select>
 
                 <div className="manual-import-help">
@@ -972,15 +1050,14 @@ const handleDeleteChapter = async (sheet: SheetContent) => {
         </main>
       )}
 
-
-      {!loading && !authLoading && !error && selectedSheet && (
+      {!loading && !authLoading && !error && activeDisplaySheet && (
         <ReaderView
-          sheet={selectedSheet}
+          sheet={activeDisplaySheet}
           soundEnabled={soundEnabled}
           repeatCount={repeatCount}
-          voiceURI={selectedVoiceMap[selectedSheet.language] ?? null}
-          voices={voices.filter((voice) => voice.lang === selectedSheet.language)}
-          selectedVoiceURI={selectedVoiceMap[selectedSheet.language] ?? null}
+          voiceURI={selectedVoiceMap[activeDisplaySheet.language] ?? null}
+          voices={voices.filter((voice) => voice.lang === activeDisplaySheet.language)}
+          selectedVoiceURI={selectedVoiceMap[activeDisplaySheet.language] ?? null}
           onChangeVoice={handleChangeVoice}
           isLoggedIn={!!user}
           onRequireLogin={() =>
@@ -991,11 +1068,23 @@ const handleDeleteChapter = async (sheet: SheetContent) => {
           }
           userId={user?.uid}
           onStatsChanged={reloadUserData}
-          chapterSettings={settingsMap[selectedSheet.name]}
+          chapterSettings={settingsMap[activeDisplaySheet.name]}
           exitConfirmOpen={exitConfirmOpen}
           onRequestExit={() => setExitConfirmOpen(true)}
           onConfirmExit={confirmExitReader}
           onCancelExit={cancelExitReader}
+          translationLanguage={selectedRecommendedSession?.translationLanguage ?? null}
+          translationOptions={
+            selectedRecommendedSession
+              ? (["en", "zh", "fr", "ja", "ko"] as LanguageCode[])
+                  .filter((lang) => lang !== selectedRecommendedSession.targetLanguage)
+              : []
+          }
+          onChangeTranslationLanguage={
+            selectedRecommendedSession
+              ? handleChangeRecommendedTranslationLanguage
+              : undefined
+          }
         />
       )}
     </div>

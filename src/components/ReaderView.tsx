@@ -1,15 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { SheetContent, TtsVoiceOption } from "../types/content";
+import type { LanguageCode, SheetContent, TtsVoiceOption } from "../types/content";
 import { speakText, stopSpeech } from "../lib/tts";
 import {
-    isFavorite,
-    recordCompletedTap,
-    recordNext,
-    recordReplay,
-    saveChapterSettings,
-    toggleFavorite,
-  } from "../lib/firestore";
-  
+  isFavorite,
+  recordCompletedTap,
+  recordNext,
+  recordReplay,
+  saveChapterSettings,
+  toggleFavorite,
+} from "../lib/firestore";
 
 type Props = {
   sheet: SheetContent;
@@ -31,31 +30,53 @@ type Props = {
   onRequestExit: () => void;
   onConfirmExit: () => void;
   onCancelExit: () => void;
+  translationLanguage?: LanguageCode | null;
+  translationOptions?: LanguageCode[];
+  onChangeTranslationLanguage?: (lang: LanguageCode) => void;
 };
 
-export default function ReaderView({
-    sheet,
-    soundEnabled,
-    repeatCount,
-    voiceURI,
-    isLoggedIn,
-    onRequireLogin,
-    userId,
-    onStatsChanged,
-    chapterSettings,
-    voices,
-    selectedVoiceURI,
-    onChangeVoice,
-    exitConfirmOpen,
-    onRequestExit,
-    onConfirmExit,
-    onCancelExit,
-  }: Props) {
+function getLanguageLabel(lang: LanguageCode): string {
+  switch (lang) {
+    case "en":
+      return "English";
+    case "zh":
+      return "Chinese";
+    case "fr":
+      return "French";
+    case "ja":
+      return "Japanese";
+    case "ko":
+      return "Korean";
+    default:
+      return lang;
+  }
+}
 
+export default function ReaderView({
+  sheet,
+  soundEnabled,
+  repeatCount,
+  voiceURI,
+  isLoggedIn,
+  onRequireLogin,
+  userId,
+  onStatsChanged,
+  chapterSettings,
+  voices,
+  selectedVoiceURI,
+  onChangeVoice,
+  exitConfirmOpen,
+  onRequestExit,
+  onConfirmExit,
+  onCancelExit,
+  translationLanguage,
+  translationOptions,
+  onChangeTranslationLanguage,
+}: Props) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [spokenCount, setSpokenCount] = useState(0);
   const [randomEnabled, setRandomEnabled] = useState(chapterSettings?.randomEnabled ?? false);
-  const [fontScale, setFontScale] = useState(chapterSettings?.fontScale ?? 1);  
+  const [fontScale, setFontScale] = useState(chapterSettings?.fontScale ?? 1);
   const [favoriteActive, setFavoriteActive] = useState(false);
 
   const isFavoritesSheet = sheet.name === "Favorites";
@@ -99,7 +120,7 @@ export default function ReaderView({
       setFavoriteActive(exists);
     }
 
-    loadFavoriteState();
+    void loadFavoriteState();
   }, [isLoggedIn, userId, sheet.name, current?.sentence, current, isFavoritesSheet]);
 
   useEffect(() => {
@@ -118,7 +139,7 @@ export default function ReaderView({
       }
     }
 
-    run();
+    void run();
 
     return () => {
       cancelled = true;
@@ -130,7 +151,35 @@ export default function ReaderView({
     setRandomEnabled(chapterSettings?.randomEnabled ?? false);
     setFontScale(chapterSettings?.fontScale ?? 1);
   }, [sheet.name, chapterSettings?.randomEnabled, chapterSettings?.fontScale]);
-  
+
+  const ACTION_COOLDOWN_MS = 2000;
+  const [actionLocked, setActionLocked] = useState(false);
+  const [cooldownToken, setCooldownToken] = useState(0);
+  const cooldownTimeoutRef = useRef<number | null>(null);
+
+  const startActionCooldown = () => {
+    if (actionLocked) return;
+
+    setActionLocked(true);
+    setCooldownToken((prev) => prev + 1);
+
+    if (cooldownTimeoutRef.current) {
+      window.clearTimeout(cooldownTimeoutRef.current);
+    }
+
+    cooldownTimeoutRef.current = window.setTimeout(() => {
+      setActionLocked(false);
+      cooldownTimeoutRef.current = null;
+    }, ACTION_COOLDOWN_MS);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (cooldownTimeoutRef.current) {
+        window.clearTimeout(cooldownTimeoutRef.current);
+      }
+    };
+  }, []);
 
   if (!current) {
     return (
@@ -154,17 +203,15 @@ export default function ReaderView({
   const replayOrNext = async () => {
     if (actionLocked) return;
     startActionCooldown();
-  
+
     const sentenceToSpeak = current.sentence;
-  
+
     if (canAutoNext) {
       if (isLast) return;
-  
-      // 화면 상태를 먼저 바꾼다
+
       setCurrentIndex((prev) => prev + 1);
       setSpokenCount(0);
-  
-      // 서버 저장은 뒤에서 비동기로 돌린다
+
       if (isLoggedIn && userId) {
         void Promise.all([
           recordNext(userId, statSheetName),
@@ -173,15 +220,13 @@ export default function ReaderView({
           void onStatsChanged?.();
         });
       }
-  
+
       return;
     }
-  
-    // replay도 먼저 현재 문장을 다시 재생
+
     await speakText(sentenceToSpeak, soundEnabled, 1, voiceURI, sheet.language);
     setSpokenCount((prev) => Math.min(prev + 1, repeatCount));
-  
-    // 서버 저장은 뒤에서 비동기로
+
     if (isLoggedIn && userId) {
       void Promise.all([
         recordReplay(userId, statSheetName),
@@ -203,10 +248,10 @@ export default function ReaderView({
     startActionCooldown();
 
     if (isLast) return;
-  
+
     setCurrentIndex((prev) => prev + 1);
     setSpokenCount(0);
-  
+
     if (isLoggedIn && userId) {
       void Promise.all([
         recordNext(userId, statSheetName),
@@ -251,73 +296,43 @@ export default function ReaderView({
 
   const handleToggleRandom = async () => {
     if (isFavoritesSheet) return;
-  
+
     if (!isLoggedIn || !userId) {
       await onRequireLogin();
       return;
     }
-  
+
     const next = !randomEnabled;
     setRandomEnabled(next);
-  
+
     await saveChapterSettings({
       uid: userId,
       sheetName: sheet.name,
       randomEnabled: next,
       fontScale,
     });
-  
+
     await onStatsChanged?.();
   };
-  
 
   const handleFontScale = async (delta: number) => {
     if (!isLoggedIn || !userId) {
-        await onRequireLogin();
-        return;
-    }    
-
-    const next = Math.max(0.7, Math.min(1.6, +(fontScale + delta).toFixed(2)));
-    setFontScale(next);    
-
-    await saveChapterSettings({
-        uid: userId,
-        sheetName: sheet.name,
-        randomEnabled,
-        fontScale: next,
-    });    
-    
-    await onStatsChanged?.();
-  };
-  
-  const ACTION_COOLDOWN_MS = 2000;
-  const [actionLocked, setActionLocked] = useState(false);
-  const [cooldownToken, setCooldownToken] = useState(0);
-  const cooldownTimeoutRef = useRef<number | null>(null);
-
-  const startActionCooldown = () => {
-    if (actionLocked) return;
-
-    setActionLocked(true);
-    setCooldownToken((prev) => prev + 1);
-
-    if (cooldownTimeoutRef.current) {
-      window.clearTimeout(cooldownTimeoutRef.current);
+      await onRequireLogin();
+      return;
     }
 
-    cooldownTimeoutRef.current = window.setTimeout(() => {
-      setActionLocked(false);
-      cooldownTimeoutRef.current = null;
-    }, ACTION_COOLDOWN_MS);
-  };
+    const next = Math.max(0.7, Math.min(1.6, +(fontScale + delta).toFixed(2)));
+    setFontScale(next);
 
-  useEffect(() => {
-    return () => {
-      if (cooldownTimeoutRef.current) {
-        window.clearTimeout(cooldownTimeoutRef.current);
-      }
-    };
-  }, []);
+    await saveChapterSettings({
+      uid: userId,
+      sheetName: sheet.name,
+      randomEnabled,
+      fontScale: next,
+    });
+
+    await onStatsChanged?.();
+  };
 
   return (
     <main className="page">
@@ -333,8 +348,15 @@ export default function ReaderView({
           <button className="control-btn" onClick={handleToggleRandom} disabled={isFavoritesSheet}>
             {randomEnabled ? "🔀 Random On" : "➡️ Random Off"}
           </button>
-          <button className="control-btn" onClick={() => handleFontScale(-0.1)}>-A</button>
-          <button className="control-btn" onClick={() => handleFontScale(0.1)}>+A</button>
+
+          <button className="control-btn" onClick={() => handleFontScale(-0.1)}>
+            -A
+          </button>
+
+          <button className="control-btn" onClick={() => handleFontScale(0.1)}>
+            +A
+          </button>
+
           <select
             className="control-btn"
             value={selectedVoiceURI ?? ""}
@@ -346,6 +368,23 @@ export default function ReaderView({
               </option>
             ))}
           </select>
+
+          {translationLanguage &&
+          onChangeTranslationLanguage &&
+          translationOptions &&
+          translationOptions.length > 0 ? (
+            <select
+              className="control-btn"
+              value={translationLanguage}
+              onChange={(e) => onChangeTranslationLanguage(e.target.value as LanguageCode)}
+            >
+              {translationOptions.map((lang) => (
+                <option key={lang} value={lang}>
+                  {getLanguageLabel(lang)}
+                </option>
+              ))}
+            </select>
+          ) : null}
         </div>
 
         <div className="sentence-box">
@@ -395,6 +434,7 @@ export default function ReaderView({
               />
             )}
           </button>
+
           <div className="repeat-counter">
             {spokenCount} / {repeatCount}
           </div>
