@@ -99,7 +99,6 @@ export default function App() {
 
   /** 기본제공학습자료 */
   const [selectedSheet, setSelectedSheet] = useState<SheetContent | null>(null);
-  const [isRecommendedLoading, setIsRecommendedLoading] = useState(false);
   const [recommendedLoadError, setRecommendedLoadError] = useState<string | null>(null);
   const [recommendedRemoteMap, setRecommendedRemoteMap] = useState<Record<string, RemoteSheetContent>>({});
   const [loadingRecommendedId, setLoadingRecommendedId] = useState<string | null>(null);
@@ -581,32 +580,32 @@ const handleDeleteChapter = async (sheet: SheetContent) => {
     }
   };
 
-  const handleAddRecommended = async (sheet: SheetContent) => {
-    const okay = await requireLogin(
-      "추천 학습 세트를 추가하려면 로그인하세요",
-      "로그인하면 원하는 기본 제공 자료를 My Learning Sets에 추가할 수 있습니다."
-    );
-    if (!okay || !user) return;
+  // const handleAddRecommended = async (sheet: SheetContent) => {
+  //   const okay = await requireLogin(
+  //     "추천 학습 세트를 추가하려면 로그인하세요",
+  //     "로그인하면 원하는 기본 제공 자료를 My Learning Sets에 추가할 수 있습니다."
+  //   );
+  //   if (!okay || !user) return;
   
-    const alreadyExists = importedSheets.some((item) => item.name === sheet.name);
-    if (alreadyExists) {
-      alert(`"${sheet.name}"는 이미 내 학습 세트에 추가되어 있습니다.`);
-      return;
-    }
+  //   const alreadyExists = importedSheets.some((item) => item.name === sheet.name);
+  //   if (alreadyExists) {
+  //     alert(`"${sheet.name}"는 이미 내 학습 세트에 추가되어 있습니다.`);
+  //     return;
+  //   }
   
-    await saveImportedChapter({
-      uid: user.uid,
-      title: sheet.name,
-      language: sheet.language,
-      rows: sheet.rows.map((row) => ({
-        sentence: row.sentence,
-        translation: row.translation,
-      })),
-    });
+  //   await saveImportedChapter({
+  //     uid: user.uid,
+  //     title: sheet.name,
+  //     language: sheet.language,
+  //     rows: sheet.rows.map((row) => ({
+  //       sentence: row.sentence,
+  //       translation: row.translation,
+  //     })),
+  //   });
   
-    await reloadUserData();
-    alert(`"${sheet.name}"가 내 학습 세트에 추가되었습니다.`);
-  };
+  //   await reloadUserData();
+  //   alert(`"${sheet.name}"가 내 학습 세트에 추가되었습니다.`);
+  // };
 
   const handleLogin = async () => {
     setLoginPromptOpen(false);
@@ -812,12 +811,12 @@ const handleDeleteChapter = async (sheet: SheetContent) => {
           >
             <div className="recommended-rail">
               <div className="recommended-grid">
-              {recommendedContentMetas.map((item, index) => {                  
+              {recommendedContentMetas.map((item, ) => {                  
                   const guestOnlyVisible = item.access === "guest";
                   const locked = !user && !guestOnlyVisible;
 
                   const progressPercent = 0; // 초기에는 0으로 두고, 나중에 id 기준 통계 연결
-                  const sentenceCountLabel = "Study set";
+                  //const sentenceCountLabel = "Study set";
 
                   return (
                     <div key={item.id} className={`recommended-card ${locked ? "locked" : ""}`}>
