@@ -14,6 +14,7 @@ export type SheetContent = {
   name: string;
   language: ChapterLanguage;
   rows: SentenceRow[];
+  difficulty?: string;
 };
 
 export type RemoteSheetContent = {
@@ -47,6 +48,7 @@ export type TtsVoiceOption = {
   voiceURI: string;
   name: string;
   lang: ChapterLanguage;
+  default?: boolean;
 };
 
 export type RecommendedContentAccess = "guest" | "login";
