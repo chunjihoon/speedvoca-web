@@ -1,4 +1,21 @@
 import type { LanguageCode, RecommendedContentAccess } from "../types/content";
+
+import enDailyImg from "../assets/recommendData/en-daily.png";
+import zhDailyImg from "../assets/recommendData/zh-daily.png";
+import frDailyImg from "../assets/recommendData/fr-daily.png";
+import krDailyImg from "../assets/recommendData/kr-daily.png";
+
+import enTravelImg from "../assets/recommendData/en-travel.png";
+import zhTravelImg from "../assets/recommendData/zh-travel.png";
+import frTravelImg from "../assets/recommendData/fr-travel.png";
+import krTravelImg from "../assets/recommendData/kr-travel.png";
+
+import enWorkImg from "../assets/recommendData/en-work.png";
+import zhWorkImg from "../assets/recommendData/zh-work.png";
+import frWorkImg from "../assets/recommendData/fr-work.png";
+import krWorkImg from "../assets/recommendData/kr-work.png";
+
+
 export type TargetLanguageCode = Exclude<LanguageCode, "ja">;
 
 export type RecommendedContentMeta = {
@@ -25,7 +42,7 @@ export const recommendedContentMetas: RecommendedContentMeta[] = [
       range: "cm-daily!A:F",
       sourceSheetId: "cm-daily",
       defaultTargetLanguage: "en",
-      imageSrc: "/src/assets/recommendData/en-daily.png",
+      imageSrc: enDailyImg,
       sentenceCount: 30,
       access: "guest",
       category: "daily",
@@ -37,7 +54,7 @@ export const recommendedContentMetas: RecommendedContentMeta[] = [
       range: "cm-daily!A:F",
       sourceSheetId: "cm-daily",
       defaultTargetLanguage: "zh",
-      imageSrc: "/src/assets/recommendData/zh-daily.png",
+      imageSrc: zhDailyImg,
       sentenceCount: 30,
       access: "login",
       category: "daily",
@@ -49,7 +66,7 @@ export const recommendedContentMetas: RecommendedContentMeta[] = [
       range: "cm-daily!A:F",
       sourceSheetId: "cm-daily",
       defaultTargetLanguage: "fr",
-      imageSrc: "/src/assets/recommendData/fr-daily.png",
+      imageSrc: frDailyImg,
       sentenceCount: 30,
       access: "login",
       category: "daily",
@@ -61,7 +78,7 @@ export const recommendedContentMetas: RecommendedContentMeta[] = [
       range: "cm-daily!A:F",
       sourceSheetId: "cm-daily",
       defaultTargetLanguage: "ko",
-      imageSrc: "/src/assets/recommendData/kr-daily.png",
+      imageSrc: krDailyImg,
       sentenceCount: 30,
       access: "login",
       category: "daily",
@@ -75,7 +92,7 @@ export const recommendedContentMetas: RecommendedContentMeta[] = [
       range: "en-travel!A:F",
       sourceSheetId: "en-travel",
       defaultTargetLanguage: "en",
-      imageSrc: "/src/assets/recommendData/en-travel.png",
+      imageSrc: enTravelImg,
       sentenceCount: 30,
       access: "login",
       category: "travel",
@@ -87,7 +104,7 @@ export const recommendedContentMetas: RecommendedContentMeta[] = [
       range: "zh-travel!A:F",
       sourceSheetId: "zh-travel",
       defaultTargetLanguage: "zh",
-      imageSrc: "/src/assets/recommendData/zh-travel.png",
+      imageSrc: zhTravelImg,
       sentenceCount: 30,
       access: "login",
       category: "travel",
@@ -99,7 +116,7 @@ export const recommendedContentMetas: RecommendedContentMeta[] = [
       range: "fr-travel!A:F",
       sourceSheetId: "fr-travel",
       defaultTargetLanguage: "fr",
-      imageSrc: "/src/assets/recommendData/fr-travel.png",
+      imageSrc: frTravelImg,
       sentenceCount: 30,
       access: "login",
       category: "travel",
@@ -111,7 +128,7 @@ export const recommendedContentMetas: RecommendedContentMeta[] = [
       range: "kr-travel!A:F",
       sourceSheetId: "kr-travel",
       defaultTargetLanguage: "ko",
-      imageSrc: "/src/assets/recommendData/kr-travel.png",
+      imageSrc: krTravelImg,
       sentenceCount: 30,
       access: "login",
       category: "travel",
@@ -125,7 +142,7 @@ export const recommendedContentMetas: RecommendedContentMeta[] = [
         range: "cm-work!A:F",
         sourceSheetId: "cm-work",
         defaultTargetLanguage: "en",
-        imageSrc: "/src/assets/recommendData/en-work.png",
+        imageSrc: enWorkImg,
         sentenceCount: 30,
         access: "login",
         category: "work",
@@ -137,7 +154,7 @@ export const recommendedContentMetas: RecommendedContentMeta[] = [
         range: "cm-work!A:F",
         sourceSheetId: "cm-work",
         defaultTargetLanguage: "zh",
-        imageSrc: "/src/assets/recommendData/zh-work.png",
+        imageSrc: zhWorkImg,
         sentenceCount: 30,
         access: "login",
         category: "work",
@@ -149,7 +166,7 @@ export const recommendedContentMetas: RecommendedContentMeta[] = [
         range: "cm-work!A:F",
         sourceSheetId: "cm-work",
         defaultTargetLanguage: "fr",
-        imageSrc: "/src/assets/recommendData/fr-work.png",
+        imageSrc: frWorkImg,
         sentenceCount: 30,
         access: "login",
         category: "work",
@@ -161,7 +178,7 @@ export const recommendedContentMetas: RecommendedContentMeta[] = [
         range: "cm-work!A:F",
         sourceSheetId: "cm-work",
         defaultTargetLanguage: "ko",
-        imageSrc: "/src/assets/recommendData/kr-work.png",
+        imageSrc: krWorkImg,
         sentenceCount: 30,
         access: "login",
         category: "work",
