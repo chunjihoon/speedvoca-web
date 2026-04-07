@@ -35,6 +35,31 @@ type Props = {
   onChangeTranslationLanguage?: (lang: LanguageCode) => void;
 };
 
+function getTargetLanguageCode(sheetLanguage: string): LanguageCode {
+  if (sheetLanguage.startsWith("en")) return "en";
+  if (sheetLanguage.startsWith("zh") || sheetLanguage.startsWith("cmn")) return "zh";
+  if (sheetLanguage.startsWith("fr")) return "fr";
+  if (sheetLanguage.startsWith("ja")) return "ja";
+  return "ko";
+}
+
+function getLanguageFlag(lang: LanguageCode): string {
+  switch (lang) {
+    case "en":
+      return "🇺🇸";
+    case "zh":
+      return "🇨🇳";
+    case "fr":
+      return "🇫🇷";
+    case "ja":
+      return "🇯🇵";
+    case "ko":
+      return "🇰🇷";
+    default:
+      return "🏳️";
+  }
+}
+
 function getLanguageLabel(lang: LanguageCode): string {
   switch (lang) {
     case "en":
@@ -80,6 +105,12 @@ export default function ReaderView({
   const [favoriteActive, setFavoriteActive] = useState(false);
 
   const isFavoritesSheet = sheet.name === "Favorites";
+  const targetLanguageCode = useMemo(() => getTargetLanguageCode(sheet.language), [sheet.language]);
+
+  const visibleTranslationOptions = useMemo(() => {
+    if (!translationOptions || translationOptions.length === 0) return [];
+    return translationOptions.filter((lang) => lang !== targetLanguageCode);
+  }, [translationOptions, targetLanguageCode]);
 
   const displayRows = useMemo(() => {
     if (isFavoritesSheet || !randomEnabled) return sheet.rows;
@@ -183,48 +214,54 @@ export default function ReaderView({
 
   if (!current) {
     return (
-      <main className="page">
-        <section className="reader-wrap">
-          <h2>{sheet.name}</h2>
-          <p>학습할 문장이 없습니다.</p>
-          <button className="primary-btn" onClick={onRequestExit}>
-            Exit
-          </button>
+      <main className="page reader-page">
+        <section className="reader-wrap reader-layout">
+          <div className="reader-scroll-content">
+            <div className="reader-header-bar">
+              <button className="control-btn reader-back-btn" onClick={onRequestExit}>
+                ←
+              </button>
+              <div className="reader-header-title">{sheet.name}</div>
+              <div className="reader-header-progress">0 / 0</div>
+            </div>
+
+            <div className="sentence-box reader-sentence-box">
+              <div className="sentence-box-body">
+                <div className="sentence">학습할 문장이 없습니다.</div>
+              </div>
+            </div>
+          </div>
         </section>
+
+        {exitConfirmOpen && (
+          <div className="confirm-overlay" onClick={onCancelExit}>
+            <div className="confirm-modal" onClick={(e) => e.stopPropagation()}>
+              <h3>학습을 종료하시겠습니까?</h3>
+              <p>지금 나가면 현재 학습 화면이 종료됩니다.</p>
+              <div className="confirm-actions">
+                <button className="secondary-btn" onClick={onCancelExit}>
+                  취소
+                </button>
+                <button className="primary-btn" onClick={onConfirmExit}>
+                  종료
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </main>
     );
   }
 
   const isLast = currentIndex === displayRows.length - 1;
-  const canAutoNext = spokenCount >= repeatCount;
   const statSheetName = isFavoritesSheet ? "Favorites" : sheet.name;
   const favoriteTargetSheetName = current.sourceSheetName || sheet.name;
 
-  const replayOrNext = async () => {
+  const handleReplay = async () => {
     if (actionLocked) return;
     startActionCooldown();
 
-    const sentenceToSpeak = current.sentence;
-
-    if (canAutoNext) {
-      if (isLast) return;
-
-      setCurrentIndex((prev) => prev + 1);
-      setSpokenCount(0);
-
-      if (isLoggedIn && userId) {
-        void Promise.all([
-          recordNext(userId, statSheetName),
-          recordCompletedTap(userId, statSheetName),
-        ]).then(() => {
-          void onStatsChanged?.();
-        });
-      }
-
-      return;
-    }
-
-    await speakText(sentenceToSpeak, soundEnabled, 1, voiceURI, sheet.language);
+    await speakText(current.sentence, soundEnabled, 1, voiceURI, sheet.language);
     setSpokenCount((prev) => Math.min(prev + 1, repeatCount));
 
     if (isLoggedIn && userId) {
@@ -335,127 +372,161 @@ export default function ReaderView({
   };
 
   return (
-    <main className="page">
-      <section className="reader-wrap">
-        <div className="progress">
-          <div className="sheet-name">{sheet.name}</div>
-          <div className="progress-count">
-            {currentIndex + 1} / {displayRows.length}
-          </div>
-        </div>
-
-        <div className="reader-toolbar">
-          <button className="control-btn" onClick={handleToggleRandom} disabled={isFavoritesSheet}>
-            {randomEnabled ? "🔀 Random On" : "➡️ Random Off"}
-          </button>
-
-          <button className="control-btn" onClick={() => handleFontScale(-0.1)}>
-            -A
-          </button>
-
-          <button className="control-btn" onClick={() => handleFontScale(0.1)}>
-            +A
-          </button>
-
-          <select
-            className="control-btn"
-            value={selectedVoiceURI ?? ""}
-            onChange={(e) => onChangeVoice(e.target.value)}
-          >
-            {voices.map((voice) => (
-              <option key={voice.voiceURI} value={voice.voiceURI}>
-                {voice.name}
-              </option>
-            ))}
-          </select>
-
-          {translationLanguage &&
-          onChangeTranslationLanguage &&
-          translationOptions &&
-          translationOptions.length > 0 ? (
-            <select
-              className="control-btn"
-              value={translationLanguage}
-              onChange={(e) => onChangeTranslationLanguage(e.target.value as LanguageCode)}
+    <main className="page reader-page">
+      <section className="reader-wrap reader-layout">
+        <div className="reader-scroll-content">
+          <div className="reader-header-bar">
+            <button
+              className="control-btn reader-back-btn"
+              onClick={onRequestExit}
+              aria-label="Back"
+              type="button"
             >
-              {translationOptions.map((lang) => (
-                <option key={lang} value={lang}>
-                  {getLanguageLabel(lang)}
-                </option>
-              ))}
-            </select>
-          ) : null}
-        </div>
+              ←
+            </button>
 
-        <div className="sentence-box">
-          <button
-            className={`favorite-star-btn ${favoriteActive ? "active" : ""}`}
-            onClick={handleFavorite}
-            aria-label="Toggle favorite"
-          >
-            {favoriteActive ? "★" : "☆"}
-          </button>
+            <div className="reader-header-title">{sheet.name}</div>
 
-          <div
-            className="sentence"
-            style={{ fontSize: `calc(clamp(28px, 5vw, 48px) * ${fontScale})` }}
-          >
-            {current.sentence}
+            <div className="reader-header-progress">
+              {currentIndex + 1} / {displayRows.length}
+            </div>
+          </div>
+
+          <div className="sentence-box reader-sentence-box">
+            <div className="sentence-box-top">
+              <div className="sentence-controls-left">
+                <button
+                  className="control-btn"
+                  onClick={handleToggleRandom}
+                  disabled={isFavoritesSheet}
+                  type="button"
+                >
+                  {randomEnabled ? "🔀 Random On" : "➡️ Random Off"}
+                </button>
+
+                <button
+                  className="control-btn"
+                  onClick={() => handleFontScale(-0.1)}
+                  type="button"
+                >
+                  -A
+                </button>
+
+                <button
+                  className="control-btn"
+                  onClick={() => handleFontScale(0.1)}
+                  type="button"
+                >
+                  +A
+                </button>
+
+                <select
+                  className="control-btn reader-inline-select"
+                  value={selectedVoiceURI ?? ""}
+                  onChange={(e) => onChangeVoice(e.target.value)}
+                >
+                  {voices.map((voice) => (
+                    <option key={voice.voiceURI} value={voice.voiceURI}>
+                      {voice.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <button
+                className={`favorite-star-btn reader-inline-favorite ${favoriteActive ? "active" : ""}`}
+                onClick={handleFavorite}
+                aria-label="Toggle favorite"
+                type="button"
+              >
+                {favoriteActive ? "★" : "☆"}
+              </button>
+            </div>
+
+            <div className="sentence-box-body">
+              <div
+                className="sentence"
+                style={{ fontSize: `calc(clamp(28px, 5vw, 48px) * ${fontScale})` }}
+              >
+                {current.sentence}
+              </div>
+            </div>
+          </div>
+
+          <div className="translation-box reader-translation-box">
+            {translationLanguage &&
+            onChangeTranslationLanguage &&
+            visibleTranslationOptions.length > 0 ? (
+              <div className="translation-language-flags">
+                {visibleTranslationOptions.map((lang) => (
+                  <button
+                    key={lang}
+                    type="button"
+                    className={`language-flag-btn ${
+                      translationLanguage === lang ? "active" : ""
+                    }`}
+                    onClick={() => onChangeTranslationLanguage(lang)}
+                    aria-label={getLanguageLabel(lang)}
+                    title={getLanguageLabel(lang)}
+                  >
+                    <span className="language-flag-emoji">{getLanguageFlag(lang)}</span>
+                  </button>
+                ))}
+              </div>
+            ) : null}
+
+            <div
+              className="translation"
+              style={{ fontSize: `calc(clamp(16px, 2.6vw, 22px) * ${fontScale})` }}
+            >
+              {current.translation}
+            </div>
           </div>
         </div>
 
-        <div className="translation-box">
-          <div
-            className="translation"
-            style={{ fontSize: `calc(clamp(16px, 2.6vw, 22px) * ${fontScale})` }}
-          >
-            {current.translation}
+        <div className="reader-bottom-dock">
+          <div className="reader-bottom-actions">
+            <button
+              className="secondary-btn"
+              onClick={goPrev}
+              disabled={currentIndex === 0}
+              type="button"
+            >
+              Prior
+            </button>
+
+            <button
+              className={`speak-btn ${actionLocked ? "cooldown" : ""}`}
+              onClick={handleReplay}
+              disabled={actionLocked}
+              type="button"
+            >
+              <span className="speak-btn-label">
+                {actionLocked ? "Please wait..." : "🔊 Replay"}
+              </span>
+              {actionLocked && (
+                <span
+                  key={cooldownToken}
+                  className="speak-btn-cooldown-bar"
+                  style={{ animationDuration: `${ACTION_COOLDOWN_MS}ms` }}
+                />
+              )}
+            </button>
+
+            <button
+              className={`secondary-btn ${actionLocked ? "cooldown" : ""}`}
+              onClick={forceNext}
+              disabled={isLast || actionLocked}
+              type="button"
+            >
+              {actionLocked ? "Cooling down..." : "Force Next"}
+            </button>
           </div>
-        </div>
 
-        <div className="speak-wrap">
-          <button
-            className={`speak-btn ${actionLocked ? "cooldown" : ""}`}
-            onClick={replayOrNext}
-            disabled={actionLocked}
-          >
-            <span className="speak-btn-label">
-              {actionLocked
-                ? "Please wait..."
-                : canAutoNext
-                ? "Next"
-                : "🔊 Replay"}
-            </span>
-            {actionLocked && (
-              <span
-                key={cooldownToken}
-                className="speak-btn-cooldown-bar"
-                style={{ animationDuration: `${ACTION_COOLDOWN_MS}ms` }}
-              />
-            )}
-          </button>
-
-          <div className="repeat-counter">
+          <div className="repeat-counter reader-repeat-counter">
             {spokenCount} / {repeatCount}
           </div>
         </div>
-
-        <div className="nav-row">
-          <button className="secondary-btn" onClick={goPrev} disabled={currentIndex === 0}>
-            Prior
-          </button>
-          <button
-            className={`secondary-btn ${actionLocked ? "cooldown" : ""}`}
-            onClick={forceNext}
-            disabled={isLast || actionLocked}
-          >
-            {actionLocked ? "Cooling down..." : "Force Next"}
-          </button>
-        </div>
-
-        <button className="primary-btn exit-btn" onClick={onRequestExit}>
-          Exit
-        </button>
       </section>
 
       {exitConfirmOpen && (

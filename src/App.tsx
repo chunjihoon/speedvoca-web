@@ -47,6 +47,7 @@ import { playLevelUpSound } from "./lib/levelUpSound";
 
 import { recommendedContentMetas, type RecommendedContentMeta } from "./data/recommendContents";
 import { fetchRecommendedSheet } from "./lib/googleSheets";
+import "./styles/home-sections.css";
 
 type TargetLanguageCode = Exclude<LanguageCode, "ja">;
 
@@ -777,7 +778,8 @@ const handleDeleteChapter = async (sheet: SheetContent) => {
         onChange={handleImportFileChange}
       />
 
-      <header className="topbar simple-topbar">
+    <header className="topbar simple-topbar">
+      <div className="topbar-head-row">
         <div className="topbar-left">
           <img
             src="/logo.png"
@@ -786,33 +788,32 @@ const handleDeleteChapter = async (sheet: SheetContent) => {
           />
         </div>
 
-        {!loading && !authLoading && !error && isStatsReady && (
-          <div className="topbar-right">
-            <StatsBar
-              currentLevel={levelSummary.currentLevel}
-              xpToNextLevel={levelSummary.xpToNextLevel}
-              progressPercent={levelSummary.progressPercent}
-              currentLevelXp={levelSummary.currentLevelXp}
-              xpRequiredForNextLevel={levelSummary.xpRequiredForNextLevel}
-              onOpenSettings={() => setSettingsOpen(true)}
-              compact
-            />
-          </div>
-        )}
-      </header>
+        <button
+          className="settings-icon-btn"
+          onClick={() => setSettingsOpen(true)}
+          aria-label="Open settings"
+          type="button"
+        >
+          ⚙
+        </button>
+      </div>
 
-      {!loading && !authLoading && !userDataLoading && !error && (
-        <>
-          {/* <StatsBar
+      {!loading && !authLoading && !error && isStatsReady && (
+        <div className="topbar-stats-row">
+          <StatsBar
             currentLevel={levelSummary.currentLevel}
             xpToNextLevel={levelSummary.xpToNextLevel}
-            totalNext={totalStats.totalNextCount}
-            totalReplay={totalStats.totalReplayCount}
             progressPercent={levelSummary.progressPercent}
             currentLevelXp={levelSummary.currentLevelXp}
             xpRequiredForNextLevel={levelSummary.xpRequiredForNextLevel}
-            onOpenSettings={() => setSettingsOpen(true)}
-          /> */}
+            compact
+          />
+        </div>
+      )}
+    </header>
+
+      {!loading && !authLoading && !userDataLoading && !error && (
+        <>
 
           <SettingsPanel
             open={settingsOpen}
@@ -883,21 +884,44 @@ const handleDeleteChapter = async (sheet: SheetContent) => {
             description="기본 제공 학습 자료입니다. 로그인하면 원하는 세트를 내 학습 목록에 추가할 수 있습니다."
             variant="secondary"
           >
-            <div className="recommended-rail">
+            <div className="recommended-rail home-horizontal-rail">
               <div className="recommended-grid">
-              {recommendedContentMetas.map((item, ) => {                  
+                {recommendedContentMetas.map((item) => {
                   const guestOnlyVisible = item.access === "guest";
                   const locked = !user && !guestOnlyVisible;
+                  const isLoading = loadingRecommendedId === item.id;
 
-                  const progressPercent = 0; // 초기에는 0으로 두고, 나중에 id 기준 통계 연결
-                  //const sentenceCountLabel = "Study set";
+                  const handleRecommendedClick = () => {
+                    if (isLoading) return;
 
-                  const loadedCount =
-                  recommendedRemoteMap[item.sourceSheetId]?.rows.length ?? item.sentenceCount ?? 0;
+                    if (locked) {
+                      showLoginPrompt(
+                        "로그인 후 더 많은 샘플을 사용할 수 있습니다",
+                        "지금은 첫 번째 샘플만 체험할 수 있습니다. 로그인하면 나머지 자료를 사용할 수 있습니다."
+                      );
+                      return;
+                    }
+
+                    handleOpenRecommended(item);
+                  };
 
                   return (
-                    <div key={item.id} className={`recommended-card ${locked ? "locked" : ""}`}>
-                      <div className="recommended-card-image-wrap">
+                    <div
+                      key={item.id}
+                      className={`recommended-card recommended-tile clickable ${
+                        locked ? "locked" : ""
+                      } ${isLoading ? "loading" : ""}`}
+                      onClick={handleRecommendedClick}
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          handleRecommendedClick();
+                        }
+                      }}
+                    >
+                      <div className="recommended-card-image-wrap recommended-tile-image-wrap">
                         <img
                           src={item.imageSrc}
                           alt={item.title}
@@ -906,48 +930,9 @@ const handleDeleteChapter = async (sheet: SheetContent) => {
                         />
                       </div>
 
-                      <div className="recommended-card-body">
-                        <div className="recommended-card-main">
-                          <div className="recommended-card-title">{item.title}</div>
-                          <div className="recommended-card-count">{loadedCount} sentences</div>
-                        </div>
-
-                        <div className="recommended-actions">
-                          {guestOnlyVisible ? (
-                            <button
-                              className="card-action primary"
-                              onClick={() => handleOpenRecommended(item)}
-                              disabled={loadingRecommendedId === item.id}
-                            >
-                              {loadingRecommendedId === item.id ? "Loading..." : "Try"}
-                            </button>
-                          ) : user ? (
-                            <button
-                              className="card-action primary"
-                              onClick={() => handleOpenRecommended(item)}
-                              disabled={loadingRecommendedId === item.id}
-                            >
-                              {loadingRecommendedId === item.id ? "Loading..." : "Study"}
-                            </button>
-                          ) : (
-                            <button
-                              className="card-action"
-                              onClick={() =>
-                                showLoginPrompt(
-                                  "로그인 후 더 많은 샘플을 사용할 수 있습니다",
-                                  "지금은 첫 번째 샘플만 체험할 수 있습니다. 로그인하면 나머지 자료를 사용할 수 있습니다."
-                                )
-                              }
-                            >
-                              Login
-                            </button>
-                          )}
-                        </div>
-
-                        <div className="recommended-card-progress">
-                          <div className="progress-track">
-                            <div className="progress-fill" style={{ width: `${progressPercent}%` }} />
-                          </div>
+                      <div className="recommended-card-body recommended-tile-body">
+                        <div className="recommended-card-title recommended-tile-title">
+                          {isLoading ? "Loading..." : item.title}
                         </div>
                       </div>
                     </div>

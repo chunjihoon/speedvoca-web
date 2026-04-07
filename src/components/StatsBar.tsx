@@ -4,7 +4,6 @@ type Props = {
   progressPercent: number;
   currentLevelXp: number;
   xpRequiredForNextLevel: number;
-  onOpenSettings: () => void;
   compact?: boolean;
 };
 
@@ -13,30 +12,26 @@ export default function StatsBar({
   progressPercent,
   currentLevelXp,
   xpRequiredForNextLevel,
-  onOpenSettings,
   compact = false,
 }: Props) {
   if (!compact) return null;
 
   return (
     <section className="stats-inline-bar">
-      <div className="stats-item stats-level">Lv.{currentLevel}</div>
-
-      <div className="stats-progress">
+      <div className="stats-inline-top">
+        <span className="stats-level-inline">Lv.{currentLevel}</span>
+        <span className="stats-divider">|</span>
         <span className="stats-progress-text">
           경험치 {currentLevelXp}/{xpRequiredForNextLevel}
         </span>
-        <div className="stats-progress-track">
-          <div
-            className="stats-progress-fill"
-            style={{ width: `${progressPercent}%` }}
-          />
-        </div>
       </div>
 
-      <button className="settings-btn compact stats-settings" onClick={onOpenSettings}>
-        ⚙ Settings
-      </button>
+      <div className="stats-progress-track">
+        <div
+          className="stats-progress-fill"
+          style={{ width: `${progressPercent}%` }}
+        />
+      </div>
     </section>
   );
 }

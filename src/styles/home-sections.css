@@ -1,0 +1,349 @@
+/* =========================
+   HOME SECTIONS ONLY
+   breakpoint: 768px
+========================= */
+
+.home-horizontal-rail {
+    width: 100%;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
+    scroll-snap-type: x proximity;
+  }
+  
+  .home-horizontal-rail::-webkit-scrollbar {
+    height: 10px;
+  }
+  
+  .home-horizontal-rail::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 999px;
+  }
+  
+  .home-horizontal-rail::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  
+  /* =========================
+     MY LEARNING
+  ========================= */
+  
+  .sheet-list {
+    display: grid;
+    gap: 14px;
+    align-items: stretch;
+  }
+  
+  .sheet-card-wrap {
+    min-width: 0;
+  }
+  
+  .my-sheet-card {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+  }
+  
+  .my-sheet-card .sheet-card-head {
+    align-items: flex-start;
+    gap: 8px;
+  }
+  
+  .my-sheet-card .sheet-title-row {
+    min-width: 0;
+    flex: 1;
+  }
+  
+  .my-sheet-card .sheet-title {
+    line-height: 1.25;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    overflow-wrap: anywhere;
+  }
+  
+  .my-sheet-card .sheet-head-right {
+    flex-shrink: 0;
+  }
+  
+  .my-sheet-card .sheet-sub {
+    margin-top: 12px;
+  }
+  
+  .my-sheet-stats {
+    margin-top: auto;
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    color: var(--text-soft);
+    font-weight: 700;
+  }
+  
+  /* =========================
+     RECOMMENDED
+  ========================= */
+  
+  .recommended-rail {
+    width: 100%;
+  }
+  
+  .recommended-grid {
+    display: grid;
+    gap: 14px;
+    align-items: stretch;
+  }
+  
+  .recommended-tile {
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    align-items: center;
+    cursor: pointer;
+    background: transparent;
+    border: none;
+    box-shadow: none;
+  }
+  
+  .recommended-tile.locked {
+    opacity: 0.74;
+  }
+  
+  .recommended-tile.loading {
+    pointer-events: none;
+  }
+  
+  .recommended-tile-image-wrap {
+    width: 100%;
+    flex-shrink: 0;
+    padding: 0;
+    margin-bottom: 12px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: transparent;
+    border: none;
+    box-shadow: none;
+  }
+  
+  .recommended-tile-image-wrap .recommended-card-image {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    display: block;
+  }
+  
+  .recommended-tile-body {
+    padding: 0;
+    gap: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    width: 100%;
+  }
+  
+  .recommended-tile-title {
+    font-weight: 800;
+    color: #0f172a;
+    line-height: 1.28;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    overflow-wrap: anywhere;
+    word-break: keep-all;
+    text-align: center;
+  }
+  
+/* =========================
+   MOBILE < 768px
+   목표:
+   - 2열 × 2행
+   - 한 화면에 4개
+   - 가로 스크롤
+   - 각 셀은 정사각형
+========================= */
+
+@media (max-width: 767px) {
+    :root {
+      --home-rail-gap: 10px;
+      --home-rail-side: 2px;
+      --home-card-size: calc((100vw - 48px - var(--home-rail-gap) - (var(--home-rail-side) * 2)) / 2);
+    }
+  
+    .sheet-list,
+    .recommended-grid {
+      display: grid;
+      grid-auto-flow: column;
+      grid-template-rows: repeat(2, var(--home-card-size));
+      grid-auto-columns: var(--home-card-size);
+      gap: var(--home-rail-gap);
+      width: max-content;
+      padding: 2px var(--home-rail-side) 10px;
+    }
+  
+    .sheet-card-wrap,
+    .recommended-tile {
+      width: var(--home-card-size);
+      min-width: var(--home-card-size);
+    }
+  
+    /* ---------- My Learning ---------- */
+  
+    .my-sheet-card {
+      aspect-ratio: 1 / 1;
+      padding: 10px;
+      border-radius: 16px;
+      overflow: hidden;
+    }
+  
+    .my-sheet-card .sheet-card-head {
+      gap: 6px;
+    }
+  
+    .my-sheet-card .sheet-title {
+      font-size: 12px;
+      line-height: 1.25;
+      -webkit-line-clamp: 2;
+    }
+  
+    .my-sheet-card .sheet-head-right {
+      gap: 2px;
+    }
+  
+    .my-sheet-card .icon-btn {
+      font-size: 12px;
+      padding: 3px;
+      border-radius: 8px;
+    }
+  
+    .my-sheet-card .sheet-sub {
+      margin-top: 8px;
+      font-size: 11px;
+      line-height: 1.3;
+      display: -webkit-box;
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: 2;
+      overflow: hidden;
+    }
+  
+    .my-sheet-stats {
+      font-size: 10px;
+      gap: 4px;
+      line-height: 1.2;
+    }
+  
+    .my-sheet-card .sheet-badge {
+      margin-top: 6px;
+      font-size: 10px;
+    }
+  
+    /* ---------- Recommended ---------- */
+  
+    .recommended-tile {
+      aspect-ratio: 1 / 1;
+      padding: 8px;
+      border-radius: 0;
+      overflow: hidden;
+      background: transparent;
+      border: none;
+      box-shadow: none;
+    }
+  
+    .recommended-tile-image-wrap {
+      flex: 1 1 auto;
+      min-height: 0;
+      aspect-ratio: auto;
+      margin-bottom: 8px;
+      background: transparent;
+      border: none;
+      box-shadow: none;
+    }
+  
+    .recommended-tile-body {
+      flex: 0 0 auto;
+      align-items: center;
+      text-align: center;
+    }
+  
+    .recommended-tile-title {
+      font-size: 11px;
+      line-height: 1.3;
+      -webkit-line-clamp: 2;
+      text-align: center;
+    }
+  }
+  
+  
+  /* =========================
+     PC >= 768px
+  ========================= */
+  
+  @media (min-width: 768px) {
+  
+    .sheet-list {
+      width: max-content;
+      grid-auto-flow: column;
+      grid-auto-columns: 320px;
+      grid-template-columns: none;
+      grid-template-rows: 1fr;
+      gap: 14px;
+      padding: 4px 4px 12px;
+    }
+  
+    .recommended-grid {
+      width: max-content;
+      grid-auto-flow: column;
+      grid-auto-columns: 320px;
+      grid-template-columns: none;
+      grid-template-rows: 1fr;
+      gap: 14px;
+      padding: 4px 4px 12px;
+    }
+  
+    .my-sheet-card {
+      min-height: 240px;
+    }
+  
+    .my-sheet-card .sheet-title {
+      font-size: 22px;
+      -webkit-line-clamp: 2;
+    }
+  
+    .my-sheet-card .sheet-sub {
+      font-size: 15px;
+    }
+  
+    .my-sheet-stats {
+      font-size: 14px;
+    }
+  
+    .recommended-tile {
+      min-height: 260px;
+      padding: 14px;
+      border-radius: 0;
+      background: transparent;
+      border: none;
+      box-shadow: none;
+      align-items: center;
+    }
+  
+    .recommended-tile-image-wrap {
+      height: 170px;
+      background: transparent;
+      border: none;
+      box-shadow: none;
+    }
+  
+    .recommended-tile-body {
+      align-items: center;
+      text-align: center;
+    }
+  
+    .recommended-tile-title {
+      font-size: 22px;
+      -webkit-line-clamp: 2;
+      text-align: center;
+    }
+  }
