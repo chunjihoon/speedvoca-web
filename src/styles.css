@@ -185,21 +185,43 @@ textarea::placeholder {
 ========================= */
 
 .stats-inline-bar {
-  width: 100%;
   background: rgba(103, 213, 95, 0.14);
   border-radius: 22px;
   padding: 14px 16px;
   display: flex;
-  flex-direction: column;
+  align-items: center;
   gap: 10px;
+  width: 100%;
+  min-width: 0;
 }
 
-.stats-inline-top {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
+.stats-level-inline {
+  flex-shrink: 0;
+  white-space: nowrap;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.stats-progress-track {
+  flex: 1;
   min-width: 0;
+  height: 8px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.18);
+}
+
+.stats-progress-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #7c3aed 0%, #22c55e 100%);
+}
+
+.stats-progress-text {
+  flex-shrink: 0;
+  white-space: nowrap;
+  font-weight: 700;
+  line-height: 1;
 }
 
 .stats-level-inline {
@@ -207,11 +229,6 @@ textarea::placeholder {
   font-weight: 900;
   color: var(--c500);
   white-space: nowrap;
-}
-
-.stats-divider {
-  color: var(--text-muted);
-  font-weight: 700;
 }
 
 .stats-progress-text {

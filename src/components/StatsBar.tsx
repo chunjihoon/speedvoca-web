@@ -18,13 +18,7 @@ export default function StatsBar({
 
   return (
     <section className="stats-inline-bar">
-      <div className="stats-inline-top">
-        <span className="stats-level-inline">Lv.{currentLevel}</span>
-        <span className="stats-divider">|</span>
-        <span className="stats-progress-text">
-          경험치 {currentLevelXp}/{xpRequiredForNextLevel}
-        </span>
-      </div>
+      <span className="stats-level-inline">Lv.{currentLevel}</span>
 
       <div className="stats-progress-track">
         <div
@@ -32,6 +26,10 @@ export default function StatsBar({
           style={{ width: `${progressPercent}%` }}
         />
       </div>
+
+      <span className="stats-progress-text">
+        경험치 {currentLevelXp}/{xpRequiredForNextLevel}
+      </span>
     </section>
   );
 }
