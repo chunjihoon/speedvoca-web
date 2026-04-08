@@ -882,7 +882,6 @@ const handleDeleteChapter = async (sheet: SheetContent) => {
               <SheetList
                 sheets={visibleSheets}
                 onSelect={handleSelectSheet}
-                onEditTitle={handleEditTitle}
                 onDelete={handleDeleteChapter}
                 isLoggedIn={!!user}
                 statsMap={visibleStatsMap}
