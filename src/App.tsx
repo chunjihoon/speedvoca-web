@@ -598,28 +598,28 @@ export default function App() {
   };
   
 
-  const handleEditTitle = async (sheet: SheetContent) => {
-    const okay = await requireLogin(
-      "챕터 이름 변경은 로그인 후 사용 가능합니다",
-      "개인 학습 세트의 제목을 바꾸려면 로그인하세요."
-    );
-    if (!okay || !user) return;
+  // const handleEditTitle = async (sheet: SheetContent) => {
+  //   const okay = await requireLogin(
+  //     "챕터 이름 변경은 로그인 후 사용 가능합니다",
+  //     "개인 학습 세트의 제목을 바꾸려면 로그인하세요."
+  //   );
+  //   if (!okay || !user) return;
 
-    if (sheet.name === "Favorites") {
-      alert("Favorites 챕터는 이름을 수정할 수 없습니다.");
-      return;
-    }
+  //   if (sheet.name === "Favorites") {
+  //     alert("Favorites 챕터는 이름을 수정할 수 없습니다.");
+  //     return;
+  //   }
 
-    const originalSheet = rawSheetMap[sheet.name] ?? sheet;
-    const sourceSheetName = originalSheet?.name ?? sheet.name;
-    const currentTitle = titleMap[sourceSheetName] || sourceSheetName;
-    const nextTitle = window.prompt("새 챕터 제목을 입력하세요.", currentTitle);
+  //   const originalSheet = rawSheetMap[sheet.name] ?? sheet;
+  //   const sourceSheetName = originalSheet?.name ?? sheet.name;
+  //   const currentTitle = titleMap[sourceSheetName] || sourceSheetName;
+  //   const nextTitle = window.prompt("새 챕터 제목을 입력하세요.", currentTitle);
 
-    if (!nextTitle?.trim()) return;
+  //   if (!nextTitle?.trim()) return;
 
-    await saveChapterTitle(user.uid, sourceSheetName, nextTitle.trim());
-    await reloadUserData();
-  };
+  //   await saveChapterTitle(user.uid, sourceSheetName, nextTitle.trim());
+  //   await reloadUserData();
+  // };
 
 const handleDeleteChapter = async (sheet: SheetContent) => {
   const okay = await requireLogin(
