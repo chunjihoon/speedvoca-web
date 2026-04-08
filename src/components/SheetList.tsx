@@ -10,7 +10,6 @@ type ChapterStat = {
 type Props = {
   sheets: SheetContent[];
   onSelect: (sheet: SheetContent) => void;
-  onEditTitle: (sheet: SheetContent) => void;
   onDelete: (sheet: SheetContent) => void;
   isLoggedIn: boolean;
   statsMap: Record<string, ChapterStat>;
@@ -20,7 +19,6 @@ type Props = {
 export default function SheetList({
   sheets,
   onSelect,
-  onEditTitle,
   onDelete,
   isLoggedIn,
   statsMap,
@@ -31,6 +29,8 @@ export default function SheetList({
       <div className="sheet-list">
         {sheets.map((sheet) => {
           const stats = statsMap[sheet.name] || {};
+          const nextCount = stats.nextCount ?? 0;
+          const replayCount = stats.replayCount ?? 0;
 
           return (
             <div key={sheet.name} className="sheet-card-wrap">
@@ -46,28 +46,16 @@ export default function SheetList({
                   }
                 }}
               >
-                <div className="sheet-card-head">
-                  <div className="sheet-title-row">
-                    <div className="sheet-title">{sheet.name}</div>
+                <div className="sheet-card-header">
+                  <div className="sheet-card-title-wrap">
+                    <div className="sheet-card-title">{sheet.name}</div>
                   </div>
 
-                  <div className="sheet-head-right">
-                    {isLoggedIn && sheet.name !== "Favorites" && (
-                      <button
-                        className="icon-btn"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onEditTitle(sheet);
-                        }}
-                        aria-label="Edit title"
-                      >
-                        ✏️
-                      </button>
-                    )}
-
+                  <div className="sheet-card-actions">
                     {showDelete && (
                       <button
-                        className="icon-btn danger"
+                        type="button"
+                        className="sheet-card-delete-btn"
                         onClick={(e) => {
                           e.stopPropagation();
                           onDelete(sheet);
@@ -80,15 +68,25 @@ export default function SheetList({
                   </div>
                 </div>
 
-                <div className="sheet-sub">{sheet.rows.length} sentences</div>
+                <div className="sheet-card-meta">
+                  <span className="sheet-card-sentence-badge">
+                    {sheet.rows.length} sentences
+                  </span>
 
-                <div className="sheet-stats my-sheet-stats">
-                  <span>Next {stats.nextCount ?? 0}</span>
-                  <span>|</span>
-                  <span>Replay {stats.replayCount ?? 0}</span>
+                  {!isLoggedIn && <span className="sheet-badge">Guest</span>}
                 </div>
 
-                {!isLoggedIn && <div className="sheet-badge">Guest</div>}
+                <div className="sheet-card-stats-grid">
+                  <div className="sheet-stat-box">
+                    <span className="sheet-stat-label">Next</span>
+                    <strong className="sheet-stat-value">{nextCount}</strong>
+                  </div>
+
+                  <div className="sheet-stat-box">
+                    <span className="sheet-stat-label">Replay</span>
+                    <strong className="sheet-stat-value">{replayCount}</strong>
+                  </div>
+                </div>
               </div>
             </div>
           );

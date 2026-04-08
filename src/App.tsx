@@ -48,6 +48,9 @@ import { playLevelUpSound } from "./lib/levelUpSound";
 import { recommendedContentMetas, type RecommendedContentMeta } from "./data/recommendContents";
 import { fetchRecommendedSheet } from "./lib/googleSheets";
 import "./styles/home-sections.css";
+import myLearningIcon from "./assets/mylearning.png";
+import recommendIcon from "./assets/recommend.png";
+import importIcon from "./assets/import.png";
 
 type TargetLanguageCode = Exclude<LanguageCode, "ja">;
 
@@ -860,27 +863,45 @@ const handleDeleteChapter = async (sheet: SheetContent) => {
 
       {!loading && !authLoading && !error && !activeReaderOpen && (        
         <main className="home-layout">
-          <SectionBlock
-            title={user ? "📚 My Learning Sets" : "📚 Sample Learning Set"}
-            description={
-              user
-                ? "당신이 추가하거나 학습 중인 챕터입니다."
-                : "게스트는 기본 샘플 1개만 학습할 수 있습니다."
-            }
-            variant="primary"
-          >
-            <SheetList
-            sheets={visibleSheets}
-            onSelect={handleSelectSheet}
-            onEditTitle={handleEditTitle}
-            onDelete={handleDeleteChapter}
-            isLoggedIn={!!user}
-            statsMap={visibleStatsMap}
-            />
-          </SectionBlock>
+          {user && visibleSheets.length > 0 && (
+            <SectionBlock
+              title={
+                <span className="section-title-with-icon">
+                  <img
+                    src={myLearningIcon}
+                    alt=""
+                    className="section-title-icon"
+                    aria-hidden="true"
+                  />
+                  <span>My Learning Sets</span>
+                </span>
+              }
+              description="당신이 추가하거나 학습 중인 챕터입니다."
+              variant="primary"
+            >
+              <SheetList
+                sheets={visibleSheets}
+                onSelect={handleSelectSheet}
+                onEditTitle={handleEditTitle}
+                onDelete={handleDeleteChapter}
+                isLoggedIn={!!user}
+                statsMap={visibleStatsMap}
+              />
+            </SectionBlock>
+          )}
 
           <SectionBlock
-            title="✨ Recommended Learning Sets"
+            title={
+              <span className="section-title-with-icon">
+                <img
+                  src={recommendIcon}
+                  alt=""
+                  className="section-title-icon"
+                  aria-hidden="true"
+                />
+                <span>Recommended Learning Sets</span>
+              </span>
+            }
             description="기본 제공 학습 자료입니다. 로그인하면 원하는 세트를 내 학습 목록에 추가할 수 있습니다."
             variant="secondary"
           >
@@ -947,7 +968,17 @@ const handleDeleteChapter = async (sheet: SheetContent) => {
           </SectionBlock>
 
           <SectionBlock
-            title="📂 Import Your Own Study Material"
+            title={
+              <span className="section-title-with-icon">
+                <img
+                  src={importIcon}
+                  alt=""
+                  className="section-title-icon"
+                  aria-hidden="true"
+                />
+                <span>Import Your Own Study Material</span>
+              </span>
+            }
             description="문장과 해석을 직접 입력해서 나만의 학습 챕터를 만들 수 있습니다. 각 줄은 sentence | translation 형식으로 입력하세요."
             variant="import"
           >

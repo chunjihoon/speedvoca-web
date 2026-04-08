@@ -2089,3 +2089,202 @@ textarea::placeholder {
     font-size: 38px;
   }
 }
+
+.section-title-with-icon {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.section-title-icon {
+  width: 22px;
+  height: 22px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+/* 2026.04.07 - 마이러닝셋 카드섹션 관련 */
+.sheet-card-wrap {
+  min-width: 0;
+}
+
+.sheet-card.my-sheet-card {
+  background: #ffffff;
+  border-radius: 28px;
+  padding: 20px 18px;
+  min-height: 208px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.04);
+  border: 1px solid rgba(20, 33, 61, 0.04);
+  transition:
+    transform 0.16s ease,
+    box-shadow 0.16s ease,
+    border-color 0.16s ease;
+}
+
+.sheet-card.my-sheet-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.06);
+  border-color: rgba(46, 163, 34, 0.12);
+}
+
+.sheet-card.my-sheet-card:focus-visible {
+  outline: 3px solid rgba(46, 163, 34, 0.18);
+  outline-offset: 2px;
+}
+
+.sheet-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.sheet-card-title-wrap {
+  min-width: 0;
+  flex: 1;
+}
+
+.sheet-card-title {
+  margin: 0;
+  font-size: 19px;
+  line-height: 1.18;
+  font-weight: 800;
+  color: #14213d;
+  word-break: break-word;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}
+
+.sheet-card-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-shrink: 0;
+}
+
+.sheet-card-delete-btn {
+  width: 34px;
+  height: 34px;
+  border: none;
+  border-radius: 999px;
+  background: #f6f7f8;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1;
+  transition:
+    background 0.16s ease,
+    transform 0.16s ease;
+}
+
+.sheet-card-delete-btn:hover {
+  background: #eef1f3;
+  transform: scale(1.04);
+}
+
+.sheet-card-delete-btn:focus-visible {
+  outline: 2px solid rgba(46, 163, 34, 0.24);
+  outline-offset: 2px;
+}
+
+.sheet-card-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.sheet-card-sentence-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: #f2f6f1;
+  color: #627081;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.sheet-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: #eef3ff;
+  color: #486284;
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.sheet-card-stats-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: auto;
+}
+
+.sheet-stat-box {
+  border-radius: 18px;
+  padding: 12px 12px 10px;
+  background: #f8faf8;
+  border: 1px solid #edf2ed;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 78px;
+  justify-content: center;
+}
+
+.sheet-stat-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: #7b8794;
+  line-height: 1;
+}
+
+.sheet-stat-value {
+  font-size: 28px;
+  line-height: 1;
+  font-weight: 800;
+  color: #1b2430;
+}
+
+/* 모바일 미세 조정 */
+@media (max-width: 768px) {
+  .sheet-card.my-sheet-card {
+    min-height: 196px;
+    padding: 18px 16px;
+    border-radius: 24px;
+  }
+
+  .sheet-card-title {
+    font-size: 18px;
+  }
+
+  .sheet-card-meta {
+    margin-bottom: 14px;
+  }
+
+  .sheet-stat-box {
+    min-height: 72px;
+    padding: 11px 10px 10px;
+  }
+
+  .sheet-stat-value {
+    font-size: 24px;
+  }
+}
