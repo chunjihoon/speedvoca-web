@@ -1,4 +1,4 @@
-// import type { TtsVoiceOption } from "../types/content";
+import type { AppLanguage, AppUiText } from "../constants/i18n";
 
 type Props = {
   open: boolean;
@@ -20,6 +20,9 @@ type Props = {
   developerModeEnabled: boolean;
   onToggleDeveloperMode: () => void;
   onTestLevelUpEffect: () => void;
+  appLanguage: AppLanguage;
+  onChangeLanguage: (lang: AppLanguage) => void;
+  ui: AppUiText;
 };
 
 export default function SettingsPanel({
@@ -42,6 +45,9 @@ export default function SettingsPanel({
   developerModeEnabled,
   onToggleDeveloperMode,
   onTestLevelUpEffect,
+  appLanguage,
+  onChangeLanguage,
+  ui,
 }: Props) {
   if (!open) return null;
 
@@ -49,7 +55,7 @@ export default function SettingsPanel({
     <div className="settings-overlay" onClick={onClose}>
       <div className="settings-panel" onClick={(e) => e.stopPropagation()}>
         <div className="settings-header">
-          <h3>Settings</h3>
+          <h3>{ui.settings.title}</h3>
           <button className="control-btn" onClick={onClose}>
             ✕
           </button>
@@ -57,13 +63,13 @@ export default function SettingsPanel({
 
         <div className="settings-section">
           <button className="control-btn" onClick={onToggleSound}>
-            {soundEnabled ? "🔊 Sound On" : "🔇 Sound Off"}
+            {soundEnabled ? ui.settings.soundOn : ui.settings.soundOff}
           </button>
         </div>
 
         <div className="settings-section">
           <label className="repeat-wrap">
-            Repeat
+            {ui.settings.repeat}
             <select
               value={repeatCount}
               onChange={(e) => onChangeRepeatCount(Number(e.target.value))}
@@ -78,19 +84,41 @@ export default function SettingsPanel({
         </div>
 
         <div className="settings-section">
-          <div className="settings-subtitle">Study Stats</div>
+          <div className="settings-subtitle">{ui.settings.language}</div>
           <div className="settings-stats">
-            <div>Next: {totalNext}</div>
-            <div>Replay: {totalReplay}</div>
+            <button
+              className="control-btn"
+              type="button"
+              onClick={() => onChangeLanguage("ko")}
+              disabled={appLanguage === "ko"}
+            >
+              {ui.settings.korean}
+            </button>
+            <button
+              className="control-btn"
+              type="button"
+              onClick={() => onChangeLanguage("en")}
+              disabled={appLanguage === "en"}
+            >
+              {ui.settings.english}
+            </button>
+          </div>
+        </div>
+
+        <div className="settings-section">
+          <div className="settings-subtitle">{ui.settings.studyStats}</div>
+          <div className="settings-stats">
+            <div>{ui.settings.next}: {totalNext}</div>
+            <div>{ui.settings.replay}: {totalReplay}</div>
           </div>
         </div>
 
         {isDeveloperAccount && (
           <div className="settings-section">
-            <div className="settings-subtitle">Developer</div>
+            <div className="settings-subtitle">{ui.settings.developer}</div>
 
             <label className="developer-toggle-row">
-              <span>Developer Mode</span>
+              <span>{ui.settings.developerMode}</span>
               <input
                 type="checkbox"
                 checked={developerModeEnabled}
@@ -101,7 +129,7 @@ export default function SettingsPanel({
             {developerModeEnabled && (
               <div className="developer-tools">
                 <button className="control-btn" onClick={onTestLevelUpEffect}>
-                  레벨업 이펙트 테스트
+                  {ui.settings.levelEffectTest}
                 </button>
               </div>
             )}
@@ -113,12 +141,12 @@ export default function SettingsPanel({
             <>
               <div className="user-chip">{userName}</div>
               <button className="control-btn" onClick={onLogout}>
-                Logout
+                {ui.settings.logout}
               </button>
             </>
           ) : (
             <button className="control-btn" onClick={onLogin}>
-              Google Login
+              {ui.settings.loginGoogle}
             </button>
           )}
         </div>

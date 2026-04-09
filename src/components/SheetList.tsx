@@ -1,4 +1,5 @@
 import type { SheetContent } from "../types/content";
+import { FAVORITES_SHEET_NAME, type AppUiText } from "../constants/i18n";
 
 type ChapterStat = {
   completedSentenceCount?: number;
@@ -14,6 +15,7 @@ type Props = {
   isLoggedIn: boolean;
   statsMap: Record<string, ChapterStat>;
   showDelete?: boolean;
+  ui: AppUiText;
 };
 
 export default function SheetList({
@@ -23,6 +25,7 @@ export default function SheetList({
   isLoggedIn,
   statsMap,
   showDelete = true,
+  ui,
 }: Props) {
   return (
     <div className="home-horizontal-rail">
@@ -31,6 +34,8 @@ export default function SheetList({
           const stats = statsMap[sheet.name] || {};
           const nextCount = stats.nextCount ?? 0;
           const replayCount = stats.replayCount ?? 0;
+          const displayTitle =
+            sheet.name === FAVORITES_SHEET_NAME ? ui.common.favoritesLabel : sheet.name;
 
           return (
             <div key={sheet.name} className="sheet-card-wrap">
@@ -48,7 +53,7 @@ export default function SheetList({
               >
                 <div className="sheet-card-header">
                   <div className="sheet-card-title-wrap">
-                    <div className="sheet-card-title">{sheet.name}</div>
+                    <div className="sheet-card-title">{displayTitle}</div>
                   </div>
 
                   <div className="sheet-card-actions">
@@ -60,7 +65,7 @@ export default function SheetList({
                           e.stopPropagation();
                           onDelete(sheet);
                         }}
-                        aria-label="Delete chapter"
+                        aria-label={ui.sheet.deleteChapterAria}
                       >
                         🗑️
                       </button>
@@ -70,20 +75,20 @@ export default function SheetList({
 
                 <div className="sheet-card-meta">
                   <span className="sheet-card-sentence-badge">
-                    {sheet.rows.length} sentences
+                    {sheet.rows.length} {ui.sheet.sentences}
                   </span>
 
-                  {!isLoggedIn && <span className="sheet-badge">Guest</span>}
+                  {!isLoggedIn && <span className="sheet-badge">{ui.sheet.guest}</span>}
                 </div>
 
                 <div className="sheet-card-stats-grid">
                   <div className="sheet-stat-box">
-                    <span className="sheet-stat-label">Next</span>
+                    <span className="sheet-stat-label">{ui.sheet.next}</span>
                     <strong className="sheet-stat-value">{nextCount}</strong>
                   </div>
 
                   <div className="sheet-stat-box">
-                    <span className="sheet-stat-label">Replay</span>
+                    <span className="sheet-stat-label">{ui.sheet.replay}</span>
                     <strong className="sheet-stat-value">{replayCount}</strong>
                   </div>
                 </div>

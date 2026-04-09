@@ -8,6 +8,7 @@ import forceNextImage from "../assets/forceNext.png";
 import replayImage from "../assets/replay.png";
 import shuffleOnImage from "../assets/shuffleOn.png";
 import shuffleOffImage from "../assets/shuffleOff.png";
+import { FAVORITES_SHEET_NAME, type AppUiText } from "../constants/i18n";
 
 import {
   isFavorite,
@@ -46,6 +47,7 @@ type Props = {
     totalNextCount?: number;
     totalReplayCount?: number;
   }) => void;
+  ui: AppUiText;
 };
 
 function getTargetLanguageCode(sheetLanguage: string): LanguageCode {
@@ -73,18 +75,18 @@ function getLanguageFlag(lang: LanguageCode): string {
   }
 }
 
-function getLanguageLabel(lang: LanguageCode): string {
+function getLanguageLabel(lang: LanguageCode, ui: AppUiText): string {
   switch (lang) {
     case "en":
-      return "English";
+      return ui.reader.languageName.en;
     case "zh":
-      return "Chinese";
+      return ui.reader.languageName.zh;
     case "fr":
-      return "French";
+      return ui.reader.languageName.fr;
     case "ja":
-      return "Japanese";
+      return ui.reader.languageName.ja;
     case "ko":
-      return "Korean";
+      return ui.reader.languageName.ko;
     default:
       return lang;
   }
@@ -111,6 +113,7 @@ export default function ReaderView({
   translationOptions,
   onChangeTranslationLanguage,
   onGuestStatsDelta,
+  ui,
 }: Props) {
   const initialSpokenCount = Math.min(1, Math.max(repeatCount, 1));
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -119,7 +122,7 @@ export default function ReaderView({
   const [fontScale, setFontScale] = useState(chapterSettings?.fontScale ?? 1);
   const [favoriteActive, setFavoriteActive] = useState(false);
 
-  const isFavoritesSheet = sheet.name === "Favorites";
+  const isFavoritesSheet = sheet.name === FAVORITES_SHEET_NAME;
   const targetLanguageCode = useMemo(() => getTargetLanguageCode(sheet.language), [sheet.language]);
 
   const visibleTranslationOptions = useMemo(() => {
@@ -240,7 +243,7 @@ export default function ReaderView({
 
             <div className="sentence-box reader-sentence-box">
               <div className="sentence-box-body">
-                <div className="sentence">학습할 문장이 없습니다.</div>
+                <div className="sentence">{ui.reader.emptySentence}</div>
               </div>
             </div>
           </div>
@@ -249,14 +252,14 @@ export default function ReaderView({
         {exitConfirmOpen && (
           <div className="confirm-overlay" onClick={onCancelExit}>
             <div className="confirm-modal" onClick={(e) => e.stopPropagation()}>
-              <h3>학습을 종료하시겠습니까?</h3>
-              <p>지금 나가면 현재 학습 화면이 종료됩니다.</p>
+              <h3>{ui.reader.exitTitle}</h3>
+              <p>{ui.reader.exitDescription}</p>
               <div className="confirm-actions">
                 <button className="secondary-btn" onClick={onCancelExit}>
-                  취소
+                  {ui.common.cancel}
                 </button>
                 <button className="primary-btn" onClick={onConfirmExit}>
-                  종료
+                  {ui.common.exit}
                 </button>
               </div>
             </div>
@@ -270,8 +273,8 @@ export default function ReaderView({
   const isReadyForNext = spokenCount >= repeatCount;
   const shuffleImage = randomEnabled ? shuffleOnImage : shuffleOffImage;
   const replayActionImage = isReadyForNext ? goNextImage : replayImage;
-  const replayActionLabel = isReadyForNext ? "Go next" : "Replay";
-  const statSheetName = isFavoritesSheet ? "Favorites" : sheet.name;
+  const replayActionLabel = isReadyForNext ? ui.reader.goNextAria : ui.reader.replayAria;
+  const statSheetName = isFavoritesSheet ? FAVORITES_SHEET_NAME : sheet.name;
   const favoriteTargetSheetName = current.sourceSheetName || sheet.name;
 
   const goPrev = () => {
@@ -422,13 +425,15 @@ export default function ReaderView({
             <button
               className="control-btn reader-back-btn"
               onClick={onRequestExit}
-              aria-label="Back"
+              aria-label={ui.reader.backAria}
               type="button"
             >
               ←
             </button>
 
-            <div className="reader-header-title">{sheet.name}</div>
+            <div className="reader-header-title">
+              {isFavoritesSheet ? ui.common.favoritesLabel : sheet.name}
+            </div>
 
             <div className="reader-header-progress">
               {currentIndex + 1} / {displayRows.length}
@@ -445,7 +450,7 @@ export default function ReaderView({
                   type="button"
                 >
                   <img src={shuffleImage} alt="" className="reader-random-toggle-icon" />
-                  {randomEnabled ? "On" : "Off"}
+                  {randomEnabled ? ui.reader.randomOn : ui.reader.randomOff}
                 </button>
 
                 <button
@@ -480,7 +485,7 @@ export default function ReaderView({
               <button
                 className={`favorite-star-btn reader-inline-favorite ${favoriteActive ? "active" : ""}`}
                 onClick={handleFavorite}
-                aria-label="Toggle favorite"
+                aria-label={ui.reader.favoriteAria}
                 type="button"
               >
                 {favoriteActive ? "★" : "☆"}
@@ -510,8 +515,8 @@ export default function ReaderView({
                       translationLanguage === lang ? "active" : ""
                     }`}
                     onClick={() => onChangeTranslationLanguage(lang)}
-                    aria-label={getLanguageLabel(lang)}
-                    title={getLanguageLabel(lang)}
+                    aria-label={getLanguageLabel(lang, ui)}
+                    title={getLanguageLabel(lang, ui)}
                   >
                     <span className="language-flag-emoji">{getLanguageFlag(lang)}</span>
                   </button>
@@ -534,7 +539,7 @@ export default function ReaderView({
               className={`icon-action-btn ${actionLocked ? "cooldown" : ""}`}
               onClick={goPrev}
               disabled={currentIndex === 0 || actionLocked}
-              aria-label="Go prior"
+              aria-label={ui.reader.goPriorAria}
               type="button"
             >
               <img src={goPriorImage} alt="" className="icon-action-image" />
@@ -573,7 +578,7 @@ export default function ReaderView({
               className={`icon-action-btn ${actionLocked ? "cooldown" : ""}`}
               onClick={goNext}
               disabled={isLast || actionLocked}
-              aria-label="Force next"
+              aria-label={ui.reader.forceNextAria}
               type="button"
             >
               <img src={forceNextImage} alt="" className="icon-action-image" />
@@ -592,14 +597,14 @@ export default function ReaderView({
       {exitConfirmOpen && (
         <div className="confirm-overlay" onClick={onCancelExit}>
           <div className="confirm-modal" onClick={(e) => e.stopPropagation()}>
-            <h3>학습을 종료하시겠습니까?</h3>
-            <p>지금 나가면 현재 학습 화면이 종료됩니다.</p>
+            <h3>{ui.reader.exitTitle}</h3>
+            <p>{ui.reader.exitDescription}</p>
             <div className="confirm-actions">
               <button className="secondary-btn" onClick={onCancelExit}>
-                취소
+                {ui.common.cancel}
               </button>
               <button className="primary-btn" onClick={onConfirmExit}>
-                종료
+                {ui.common.exit}
               </button>
             </div>
           </div>

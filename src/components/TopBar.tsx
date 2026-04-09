@@ -1,4 +1,5 @@
 import type { TtsVoiceOption } from "../types/content";
+import type { AppUiText } from "../constants/i18n";
 
 type Props = {
   soundEnabled: boolean;
@@ -15,6 +16,7 @@ type Props = {
   onLogin: () => void;
   onLogout: () => void;
   onImport: () => void;
+  ui: AppUiText;
 };
 
 export default function TopBar({
@@ -32,6 +34,7 @@ export default function TopBar({
   onLogin,
   onLogout,
   onImport,
+  ui,
 }: Props) {
   return (
     <header className="topbar">
@@ -41,15 +44,15 @@ export default function TopBar({
 
       <div className="topbar-right">
         <button className="control-btn" onClick={onImport}>
-          ＋ Import
+          ＋ {ui.manualImport.importExcel}
         </button>
 
         <button className="control-btn" onClick={onToggleSound}>
-          {soundEnabled ? "🔊 Sound On" : "🔇 Sound Off"}
+          {soundEnabled ? ui.settings.soundOn : ui.settings.soundOff}
         </button>
 
         <label className="repeat-wrap">
-          Repeat
+          {ui.settings.repeat}
           <select
             value={repeatCount}
             onChange={(e) => onChangeRepeatCount(Number(e.target.value))}
@@ -63,12 +66,12 @@ export default function TopBar({
         </label>
 
         <label className="repeat-wrap voice-wrap">
-          Voice
+          {ui.manualImport.language}
           <select
             value={selectedVoiceURI ?? ""}
             onChange={(e) => onChangeVoice(e.target.value)}
           >
-            {voices.length === 0 && <option value="">Loading voices...</option>}
+            {voices.length === 0 && <option value="">{ui.app.loading}</option>}
             {voices.map((voice) => (
               <option key={voice.voiceURI} value={voice.voiceURI}>
                 {voice.name} ({voice.lang}){voice.default ? " • default" : ""}
@@ -79,7 +82,7 @@ export default function TopBar({
 
         {inReader && (
           <button className="control-btn" onClick={onBackToList}>
-            ← Back
+            ← {ui.common.back}
           </button>
         )}
 
@@ -87,12 +90,12 @@ export default function TopBar({
           <>
             <span className="user-chip">{userName}</span>
             <button className="control-btn" onClick={onLogout}>
-              Logout
+              {ui.settings.logout}
             </button>
           </>
         ) : (
           <button className="control-btn" onClick={onLogin}>
-            Google Login
+            {ui.settings.loginGoogle}
           </button>
         )}
       </div>

@@ -3,11 +3,15 @@ import { createPortal } from "react-dom";
 type LevelUpEffectProps = {
   visible: boolean;
   level: number;
+  label: string;
+  levelPrefix: string;
 };
 
 export default function LevelUpEffect({
   visible,
   level,
+  label,
+  levelPrefix,
 }: LevelUpEffectProps) {
   if (!visible) return null;
 
@@ -31,8 +35,11 @@ export default function LevelUpEffect({
       </div>
 
       <div className="levelup-content">
-        <div className="levelup-label">LEVEL UP!</div>
-        <div className="levelup-level">Lv.{level}</div>
+        <div className="levelup-label">{label}</div>
+        <div className="levelup-level">
+          {levelPrefix}
+          {level}
+        </div>
       </div>
     </div>,
     document.body

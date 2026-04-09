@@ -1,17 +1,21 @@
+import type { AppUiText } from "../constants/i18n";
+
 type Props = {
   open: boolean;
-  title?: string;
-  description?: string;
+  title: string;
+  description: string;
   onClose: () => void;
   onLoginWithGoogle: () => void;
+  ui: AppUiText;
 };
 
 export default function LoginPromptModal({
   open,
-  title = "로그인이 필요합니다",
-  description = "이 기능은 로그인 후 사용할 수 있습니다.",
+  title,
+  description,
   onClose,
   onLoginWithGoogle,
+  ui,
 }: Props) {
   if (!open) return null;
 
@@ -31,12 +35,12 @@ export default function LoginPromptModal({
         <div className="login-provider-list">
           <button className="google-login-btn" onClick={onLoginWithGoogle}>
             <span className="google-mark">G</span>
-            Continue with Google
+            {ui.loginPrompt.continueWithGoogle}
           </button>
         </div>
 
         <div className="login-modal-footnote">
-          현재는 Google 소셜 로그인만 지원합니다.
+          {ui.loginPrompt.googleOnlyFootnote}
         </div>
       </div>
     </div>

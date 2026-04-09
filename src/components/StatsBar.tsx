@@ -1,3 +1,5 @@
+import type { AppUiText } from "../constants/i18n";
+
 type Props = {
   currentLevel: number;
   xpToNextLevel: number;
@@ -5,6 +7,7 @@ type Props = {
   currentLevelXp: number;
   xpRequiredForNextLevel: number;
   compact?: boolean;
+  ui: AppUiText;
 };
 
 export default function StatsBar({
@@ -13,12 +16,16 @@ export default function StatsBar({
   currentLevelXp,
   xpRequiredForNextLevel,
   compact = false,
+  ui,
 }: Props) {
   if (!compact) return null;
 
   return (
     <section className="stats-inline-bar">
-      <span className="stats-level-inline">Lv.{currentLevel}</span>
+      <span className="stats-level-inline">
+        {ui.level.short}
+        {currentLevel}
+      </span>
 
       <div className="stats-progress-track">
         <div
@@ -28,7 +35,7 @@ export default function StatsBar({
       </div>
 
       <span className="stats-progress-text">
-        경험치 {currentLevelXp}/{xpRequiredForNextLevel}
+        {ui.level.xp} {currentLevelXp}/{xpRequiredForNextLevel}
       </span>
     </section>
   );

@@ -53,6 +53,12 @@ import "./styles/home-sections.css";
 import myLearningIcon from "./assets/mylearning.png";
 import recommendIcon from "./assets/recommend.png";
 import importIcon from "./assets/import.png";
+import {
+  APP_LANGUAGE_STORAGE_KEY,
+  FAVORITES_SHEET_NAME,
+  UI_TEXT,
+  type AppLanguage,
+} from "./constants/i18n";
 
 type TargetLanguageCode = Exclude<LanguageCode, "ja">;
 
@@ -140,6 +146,11 @@ function getFallbackTranslationLanguage(target: TargetLanguageCode): LanguageCod
 
 export default function App() {
   const { user, authLoading } = useAuth();
+  const [appLanguage, setAppLanguage] = useState<AppLanguage>(() => {
+    const saved = localStorage.getItem(APP_LANGUAGE_STORAGE_KEY);
+    return saved === "en" ? "en" : "ko";
+  });
+  const ui = UI_TEXT[appLanguage];
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -167,9 +178,9 @@ export default function App() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   //const [loginModalOpen, setLoginModalOpen] = useState(false);
   const [loginPromptOpen, setLoginPromptOpen] = useState(false);
-  const [loginPromptTitle, setLoginPromptTitle] = useState("로그인이 필요합니다");
+  const [loginPromptTitle, setLoginPromptTitle] = useState(ui.loginPrompt.requiredTitle);
   const [loginPromptDescription, setLoginPromptDescription] = useState(
-    "이 기능은 로그인 후 사용할 수 있습니다."
+    ui.loginPrompt.requiredDescription
   );
 
   const [manualTitle, setManualTitle] = useState("");
@@ -202,6 +213,16 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem("speedvoca_developer_mode", String(developerModeEnabled));
   }, [developerModeEnabled]);
+
+  useEffect(() => {
+    localStorage.setItem(APP_LANGUAGE_STORAGE_KEY, appLanguage);
+  }, [appLanguage]);
+
+  useEffect(() => {
+    if (loginPromptOpen) return;
+    setLoginPromptTitle(ui.loginPrompt.requiredTitle);
+    setLoginPromptDescription(ui.loginPrompt.requiredDescription);
+  }, [appLanguage, loginPromptOpen, ui.loginPrompt.requiredTitle, ui.loginPrompt.requiredDescription]);
 
   const handleTestLevelUpEffect = () => {
     setShowLevelUpEffect(true);
@@ -269,7 +290,7 @@ export default function App() {
         setSelectedVoiceMap(validVoiceMap);
         setVoiceMap(validVoiceMap);
       } catch (err) {
-        setError(err instanceof Error ? err.message : "알 수 없는 오류");
+        setError(err instanceof Error ? err.message : ui.app.unknownError);
       } finally {
         setLoading(false);
       }
@@ -279,8 +300,8 @@ export default function App() {
   }, []);
 
   const showLoginPrompt = (
-    title = "로그인이 필요합니다",
-    description = "이 기능은 로그인 후 사용할 수 있습니다."
+    title = ui.loginPrompt.requiredTitle,
+    description = ui.loginPrompt.requiredDescription
   ) => {
     setLoginPromptTitle(title);
     setLoginPromptDescription(description);
@@ -441,7 +462,7 @@ export default function App() {
   
     if (user && favoriteRows.length > 0) {
       mapped.unshift({
-        name: "Favorites",
+        name: FAVORITES_SHEET_NAME,
         language: "en-US",
         rows: favoriteRows.map((row) => ({
           sentence: row.sentence,
@@ -467,8 +488,8 @@ export default function App() {
     });
   
     if (favoriteRows.length > 0) {
-      result["Favorites"] = {
-        name: "Favorites",
+      result[FAVORITES_SHEET_NAME] = {
+        name: FAVORITES_SHEET_NAME,
         language: "en-US",
         rows: favoriteRows.map((row) => ({
           sentence: row.sentence,
@@ -494,7 +515,7 @@ export default function App() {
     });
 
     if (favoriteRows.length > 0) {
-      result["Favorites"] = {
+      result[FAVORITES_SHEET_NAME] = {
         completedSentenceCount: favoriteRows.length,
         nextCount: 0,
         replayCount: 0,
@@ -593,6 +614,15 @@ export default function App() {
     });
   };
 
+  useEffect(() => {
+    setSelectedRecommendedSession((prev) => {
+      if (!prev) return prev;
+      const localizedTitle = ui.recommendedTitles[prev.id] ?? prev.title;
+      if (localizedTitle === prev.title) return prev;
+      return { ...prev, title: localizedTitle };
+    });
+  }, [appLanguage, ui.recommendedTitles]);
+
 
 
   const handleToggleSound = () => {
@@ -636,8 +666,8 @@ export default function App() {
   };
 
   const requireLogin = async (
-    title = "로그인이 필요합니다",
-    description = "이 기능은 로그인 후 사용할 수 있습니다."
+    title = ui.loginPrompt.requiredTitle,
+    description = ui.loginPrompt.requiredDescription
   ) => {
     if (user) return true;
     showLoginPrompt(title, description);
@@ -646,8 +676,8 @@ export default function App() {
 
   const handleImport = async () => {
     const okay = await requireLogin(
-      "학습 자료를 가져오려면 로그인하세요",
-      "엑셀 파일을 가져오고 저장하려면 먼저 로그인해야 합니다."
+      ui.loginPrompt.importTitle,
+      ui.loginPrompt.importDescription
     );
     if (!okay) return;
   
@@ -662,14 +692,14 @@ export default function App() {
       .map((line, index) => {
         const parts = line.split("|");
         if (parts.length < 2) {
-          throw new Error(`${index + 1}번째 줄 형식이 올바르지 않습니다. "sentence | translation" 형식으로 입력하세요.`);
+          throw new Error(ui.alerts.parseFormatLineError(index + 1));
         }
   
         const sentence = parts[0].trim();
         const translation = parts.slice(1).join("|").trim();
   
         if (!sentence || !translation) {
-          throw new Error(`${index + 1}번째 줄에 sentence 또는 translation이 비어 있습니다.`);
+          throw new Error(ui.alerts.parseMissingValueLineError(index + 1));
         }
   
         return { sentence, translation };
@@ -678,19 +708,19 @@ export default function App() {
 
   const handleManualImport = async () => {
     const okay = await requireLogin(
-      "학습 자료를 저장하려면 로그인하세요",
-      "직접 입력한 학습 자료를 저장하고 계속 사용하려면 로그인해야 합니다."
+      ui.loginPrompt.manualSaveTitle,
+      ui.loginPrompt.manualSaveDescription
     );
     if (!okay || !user) return;
   
     const title = manualTitle.trim();
     if (!title) {
-      alert("챕터 제목을 입력하세요.");
+      alert(ui.alerts.manualTitleRequired);
       return;
     }
   
     if (!manualContent.trim()) {
-      alert('학습 내용을 입력하세요. 각 줄은 "sentence | translation" 형식이어야 합니다.');
+      alert(ui.alerts.manualContentRequired);
       return;
     }
   
@@ -700,7 +730,7 @@ export default function App() {
       const rows = parseManualRows(manualContent);
   
       if (!rows.length) {
-        alert("저장할 문장이 없습니다.");
+        alert(ui.alerts.manualEmptyRows);
         return;
       }
   
@@ -716,12 +746,12 @@ export default function App() {
       setManualTitle("");
       setManualContent("");
   
-      alert(`"${title}" 챕터가 추가되었습니다. (${rows.length}문장)`);
+      alert(ui.alerts.manualSaved(title, rows.length));
     } catch (error) {
       const message =
         error instanceof Error
           ? error.message
-          : "입력한 학습 자료를 저장하는 중 오류가 발생했습니다.";
+          : ui.alerts.manualSaveFailed;
       alert(message);
     } finally {
       setManualImportLoading(false);
@@ -729,50 +759,27 @@ export default function App() {
   };
   
 
-  // const handleEditTitle = async (sheet: SheetContent) => {
-  //   const okay = await requireLogin(
-  //     "챕터 이름 변경은 로그인 후 사용 가능합니다",
-  //     "개인 학습 세트의 제목을 바꾸려면 로그인하세요."
-  //   );
-  //   if (!okay || !user) return;
-
-  //   if (sheet.name === "Favorites") {
-  //     alert("Favorites 챕터는 이름을 수정할 수 없습니다.");
-  //     return;
-  //   }
-
-  //   const originalSheet = rawSheetMap[sheet.name] ?? sheet;
-  //   const sourceSheetName = originalSheet?.name ?? sheet.name;
-  //   const currentTitle = titleMap[sourceSheetName] || sourceSheetName;
-  //   const nextTitle = window.prompt("새 챕터 제목을 입력하세요.", currentTitle);
-
-  //   if (!nextTitle?.trim()) return;
-
-  //   await saveChapterTitle(user.uid, sourceSheetName, nextTitle.trim());
-  //   await reloadUserData();
-  // };
-
 const handleDeleteChapter = async (sheet: SheetContent) => {
   const okay = await requireLogin(
-    "챕터 삭제는 로그인 후 사용 가능합니다",
-    "내 학습 세트에서 챕터를 삭제하려면 로그인하세요."
+    ui.loginPrompt.deleteTitle,
+    ui.loginPrompt.deleteDescription
   );
   
   if (!okay || !user) return;
   
-    if (sheet.name === "Favorites") {
-      alert("Favorites 챕터는 삭제할 수 없습니다.");
+    if (sheet.name === FAVORITES_SHEET_NAME) {
+      alert(ui.alerts.deleteFavoritesForbidden);
       return;
     }
   
     const isImported = importedSheets.some((item) => item.name === sheet.name);
   
     if (!isImported) {
-      alert("기본 제공 챕터는 아직 삭제 대상이 아닙니다. 현재는 import한 챕터만 삭제할 수 있습니다.");
+      alert(ui.alerts.deleteDefaultForbidden);
       return;
     }
   
-    const confirmed = window.confirm(`"${sheet.name}" 챕터를 삭제하시겠습니까?`);
+    const confirmed = window.confirm(ui.alerts.deleteConfirm(sheet.name));
     if (!confirmed) return;
   
     await deleteImportedChapter(user.uid, sheet.name);
@@ -782,33 +789,6 @@ const handleDeleteChapter = async (sheet: SheetContent) => {
       setSelectedSheet(null);
     }
   };
-
-  // const handleAddRecommended = async (sheet: SheetContent) => {
-  //   const okay = await requireLogin(
-  //     "추천 학습 세트를 추가하려면 로그인하세요",
-  //     "로그인하면 원하는 기본 제공 자료를 My Learning Sets에 추가할 수 있습니다."
-  //   );
-  //   if (!okay || !user) return;
-  
-  //   const alreadyExists = importedSheets.some((item) => item.name === sheet.name);
-  //   if (alreadyExists) {
-  //     alert(`"${sheet.name}"는 이미 내 학습 세트에 추가되어 있습니다.`);
-  //     return;
-  //   }
-  
-  //   await saveImportedChapter({
-  //     uid: user.uid,
-  //     title: sheet.name,
-  //     language: sheet.language,
-  //     rows: sheet.rows.map((row) => ({
-  //       sentence: row.sentence,
-  //       translation: row.translation,
-  //     })),
-  //   });
-  
-  //   await reloadUserData();
-  //   alert(`"${sheet.name}"가 내 학습 세트에 추가되었습니다.`);
-  // };
 
   const handleLogin = async () => {
     setLoginPromptOpen(false);
@@ -832,7 +812,7 @@ const handleDeleteChapter = async (sheet: SheetContent) => {
       const parsedSheets = await parseWorkbookFile(file);
   
       if (parsedSheets.length === 0) {
-        alert("가져올 수 있는 시트가 없습니다. sentence / translation 형식을 확인하세요.");
+        alert(ui.alerts.importNoSheets);
         return;
       }
   
@@ -849,10 +829,10 @@ const handleDeleteChapter = async (sheet: SheetContent) => {
       }
   
       await reloadUserData(user);
-      alert(`${parsedSheets.length}개 챕터를 가져왔습니다.`);
+      alert(ui.alerts.importDone(parsedSheets.length));
     } catch (error) {
       console.error(error);
-      alert("엑셀 import 중 오류가 발생했습니다.");
+      alert(ui.alerts.importFailed);
     } finally {
       if (event.target) {
         event.target.value = "";
@@ -879,7 +859,7 @@ const handleDeleteChapter = async (sheet: SheetContent) => {
       setSelectedSheet(null);
       setSelectedRecommendedSession({
         id: meta.id,
-        title: meta.title,
+        title: ui.recommendedTitles[meta.id] ?? meta.title,
         sourceSheetId: meta.sourceSheetId,
         rows: remoteSheet.rows,
         targetLanguage: meta.defaultTargetLanguage,
@@ -890,7 +870,7 @@ const handleDeleteChapter = async (sheet: SheetContent) => {
     } catch (error) {
       console.error(error);
       setRecommendedLoadError(
-        error instanceof Error ? error.message : "학습 자료를 불러오지 못했습니다."
+        error instanceof Error ? error.message : ui.home.recommendedLoadFailed
       );
     } finally {
       setLoadingRecommendedId(null);
@@ -902,6 +882,8 @@ const handleDeleteChapter = async (sheet: SheetContent) => {
     <LevelUpEffect
       visible={showLevelUpEffect}
       level={levelSummary.currentLevel}
+      label={ui.level.levelUp}
+      levelPrefix={ui.level.short}
     />
     <div className="app-shell">
       <input
@@ -917,7 +899,7 @@ const handleDeleteChapter = async (sheet: SheetContent) => {
         <div className="topbar-left">
           <img
             src="/logo.png"
-            alt="Loopeak Language Training Web"
+            alt={ui.app.logoAlt}
             className="topbar-logo"
           />
         </div>
@@ -925,7 +907,7 @@ const handleDeleteChapter = async (sheet: SheetContent) => {
         <button
           className="settings-icon-btn"
           onClick={() => setSettingsOpen(true)}
-          aria-label="Open settings"
+          aria-label={ui.app.settingsAria}
           type="button"
         >
           ⚙
@@ -941,6 +923,7 @@ const handleDeleteChapter = async (sheet: SheetContent) => {
             currentLevelXp={levelSummary.currentLevelXp}
             xpRequiredForNextLevel={levelSummary.xpRequiredForNextLevel}
             compact
+            ui={ui}
           />
         </div>
       )}
@@ -957,8 +940,10 @@ const handleDeleteChapter = async (sheet: SheetContent) => {
             repeatCount={repeatCount}
             onChangeRepeatCount={handleChangeRepeatCount}
             isLoggedIn={!!user}
-            userName={user?.displayName || user?.email || "User"}
-            onLogin={() => showLoginPrompt("로그인", "Google 계정으로 바로 시작할 수 있습니다.")}
+            userName={user?.displayName || user?.email || ui.app.userFallbackName}
+            onLogin={() =>
+              showLoginPrompt(ui.loginPrompt.quickLoginTitle, ui.loginPrompt.quickLoginDescription)
+            }
             onLogout={handleLogout}
             isDeveloperAccount={isDeveloperAccount}
             developerModeEnabled={developerModeEnabled}
@@ -966,6 +951,9 @@ const handleDeleteChapter = async (sheet: SheetContent) => {
             onTestLevelUpEffect={handleTestLevelUpEffect}
             totalNext={effectiveTotalStats.totalNextCount}
             totalReplay={effectiveTotalStats.totalReplayCount}
+            appLanguage={appLanguage}
+            onChangeLanguage={setAppLanguage}
+            ui={ui}
           />
 
           <LoginPromptModal
@@ -974,6 +962,7 @@ const handleDeleteChapter = async (sheet: SheetContent) => {
             description={loginPromptDescription}
             onClose={() => setLoginPromptOpen(false)}
             onLoginWithGoogle={handleLogin}
+            ui={ui}
           />
         </>
       )}
@@ -985,7 +974,7 @@ const handleDeleteChapter = async (sheet: SheetContent) => {
             <div className="status-bar-track">
               <div className="status-bar-fill" />
             </div>
-            <div className="status-text">Loading...</div>
+            <div className="status-text">{ui.app.loading}</div>
           </div>
         </div>
       )}
@@ -1001,13 +990,13 @@ const handleDeleteChapter = async (sheet: SheetContent) => {
                   <img
                     src={myLearningIcon}
                     alt=""
-                    className="section-title-icon"
-                    aria-hidden="true"
-                  />
-                  <span>My Learning Sets</span>
+                  className="section-title-icon"
+                  aria-hidden="true"
+                />
+                  <span>{ui.home.myLearningSetsTitle}</span>
                 </span>
               }
-              description="당신이 추가하거나 학습 중인 챕터입니다."
+              description={ui.home.myLearningSetsDescription}
               variant="primary"
             >
               <SheetList
@@ -1016,6 +1005,7 @@ const handleDeleteChapter = async (sheet: SheetContent) => {
                 onDelete={handleDeleteChapter}
                 isLoggedIn={!!user}
                 statsMap={visibleStatsMap}
+                ui={ui}
               />
             </SectionBlock>
           )}
@@ -1029,10 +1019,10 @@ const handleDeleteChapter = async (sheet: SheetContent) => {
                   className="section-title-icon"
                   aria-hidden="true"
                 />
-                <span>Recommended Learning Sets</span>
+                <span>{ui.home.recommendedTitle}</span>
               </span>
             }
-            description="기본 제공 학습 자료입니다. 로그인하면 원하는 세트를 내 학습 목록에 추가할 수 있습니다."
+            description={ui.home.recommendedDescription}
             variant="secondary"
           >
             <div className="recommended-rail home-horizontal-rail">
@@ -1041,14 +1031,15 @@ const handleDeleteChapter = async (sheet: SheetContent) => {
                   const guestOnlyVisible = item.access === "guest";
                   const locked = !user && !guestOnlyVisible;
                   const isLoading = loadingRecommendedId === item.id;
+                  const localizedTitle = ui.recommendedTitles[item.id] ?? item.title;
 
                   const handleRecommendedClick = () => {
                     if (isLoading) return;
 
                     if (locked) {
                       showLoginPrompt(
-                        "로그인 후 더 많은 샘플을 사용할 수 있습니다",
-                        "지금은 첫 번째 샘플만 체험할 수 있습니다. 로그인하면 나머지 자료를 사용할 수 있습니다."
+                        ui.loginPrompt.moreSamplesTitle,
+                        ui.loginPrompt.moreSamplesDescription
                       );
                       return;
                     }
@@ -1075,7 +1066,7 @@ const handleDeleteChapter = async (sheet: SheetContent) => {
                       <div className="recommended-card-image-wrap recommended-tile-image-wrap">
                         <img
                           src={item.imageSrc}
-                          alt={item.title}
+                          alt={localizedTitle}
                           className="recommended-card-image"
                           loading="lazy"
                         />
@@ -1083,7 +1074,7 @@ const handleDeleteChapter = async (sheet: SheetContent) => {
 
                       <div className="recommended-card-body recommended-tile-body">
                         <div className="recommended-card-title recommended-tile-title">
-                          {isLoading ? "Loading..." : item.title}
+                          {isLoading ? ui.home.loadingCard : localizedTitle}
                         </div>
                       </div>
                     </div>
@@ -1106,59 +1097,50 @@ const handleDeleteChapter = async (sheet: SheetContent) => {
                   className="section-title-icon"
                   aria-hidden="true"
                 />
-                <span>Import Your Own Study Material</span>
+                <span>{ui.home.importTitle}</span>
               </span>
             }
-            description="문장과 해석을 직접 입력해서 나만의 학습 챕터를 만들 수 있습니다. 각 줄은 sentence | translation 형식으로 입력하세요."
+            description={ui.home.importDescription}
             variant="import"
           >
             <div className="manual-import-panel">
-              {/* <div className="manual-import-header">
-                <h3>Create Your Own Study Material</h3>
-                <p>
-                  문장과 해석을 직접 입력해서 나만의 학습 챕터를 만들 수 있습니다.
-                  <br />
-                  각 줄은 <strong>sentence | translation</strong> 형식으로 입력하세요.
-                </p>
-              </div> */}
-
               <div className="manual-import-form">
-                <label className="manual-label">Chapter Title</label>
+                <label className="manual-label">{ui.manualImport.chapterTitle}</label>
                 <input
                   className="manual-input"
                   type="text"
-                  placeholder="예: Daily Conversation Practice"
+                  placeholder={ui.manualImport.chapterTitlePlaceholder}
                   value={manualTitle}
                   onChange={(e) => setManualTitle(e.target.value)}
                 />
 
-                <label className="manual-label">Study Content</label>
+                <label className="manual-label">{ui.manualImport.studyContent}</label>
                 <textarea
                   className="manual-textarea"
-                  placeholder={`How are you? | 잘 지내?\nI’m on my way. | 가는 중이야\nLet’s get started. | 시작하자`}
+                  placeholder={ui.manualImport.studyContentPlaceholder}
                   value={manualContent}
                   onChange={(e) => setManualContent(e.target.value)}
                   rows={10}
                 />
 
-                <label className="manual-label">Language</label>
+                <label className="manual-label">{ui.manualImport.language}</label>
                 <select
                   className="manual-input"
                   value={manualLanguage}
                   onChange={(e) => setManualLanguage(e.target.value as ChapterLanguage)}
                 >
-                  <option value="en-US">English</option>
-                  <option value="fr-FR">French</option>
-                  <option value="cmn-CN">Chinese</option>
-                  <option value="ko-KR">Korean</option>
+                  <option value="en-US">{ui.reader.languageName.en}</option>
+                  <option value="fr-FR">{ui.reader.languageName.fr}</option>
+                  <option value="cmn-CN">{ui.reader.languageName.zh}</option>
+                  <option value="ko-KR">{ui.reader.languageName.ko}</option>
                 </select>
 
                 <div className="manual-import-help">
-                  <div>입력 규칙</div>
+                  <div>{ui.manualImport.inputRules}</div>
                   <ul>
-                    <li>한 줄 = 한 문장</li>
-                    <li>형식: sentence | translation</li>
-                    <li>예: I’m exhausted. | 나 너무 지쳤어.</li>
+                    <li>{ui.manualImport.ruleOneLine}</li>
+                    <li>{ui.manualImport.ruleFormat}</li>
+                    <li>{ui.manualImport.ruleExample}</li>
                   </ul>
                 </div>
 
@@ -1168,7 +1150,7 @@ const handleDeleteChapter = async (sheet: SheetContent) => {
                     onClick={handleManualImport}
                     disabled={manualImportLoading}
                   >
-                    {manualImportLoading ? "Saving..." : "Save Chapter"}
+                    {manualImportLoading ? ui.manualImport.savingChapter : ui.manualImport.saveChapter}
                   </button>
 
                   <button
@@ -1180,15 +1162,15 @@ const handleDeleteChapter = async (sheet: SheetContent) => {
                     }}
                     disabled={manualImportLoading}
                   >
-                    Clear
+                    {ui.manualImport.clear}
                   </button>
                 </div>
               </div>
 
               <div className="manual-import-suboption">
-                <p>나만의 문장 자료를 엑셀 파일로 불러와서 공부해보세요. (형식: 1열-sentence, 2열-translation)</p>
+                <p>{ui.manualImport.suboption}</p>
                 <button className="card-action" onClick={handleImport}>
-                  Import Excel File
+                  {ui.manualImport.importExcel}
                 </button>
               </div>
             </div>
@@ -1208,8 +1190,8 @@ const handleDeleteChapter = async (sheet: SheetContent) => {
           isLoggedIn={!!user}
           onRequireLogin={() =>
             requireLogin(
-              "로그인이 필요한 기능입니다",
-              "즐겨찾기, 랜덤, 글자 크기 저장 같은 개인화 기능은 로그인 후 사용할 수 있습니다."
+              ui.loginPrompt.readerFeatureTitle,
+              ui.loginPrompt.readerFeatureDescription
             )
           }
           userId={user?.uid}
@@ -1232,6 +1214,7 @@ const handleDeleteChapter = async (sheet: SheetContent) => {
               ? handleChangeRecommendedTranslationLanguage
               : undefined
           }
+          ui={ui}
         />
       )}
     </div>
