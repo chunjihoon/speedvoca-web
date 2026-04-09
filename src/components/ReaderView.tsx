@@ -146,7 +146,7 @@ export default function ReaderView({
 
   const current = useMemo(() => displayRows[currentIndex], [displayRows, currentIndex]);
   const pendingTranslationPinnedSentenceRef = useRef<string | null>(null);
-  const translationSwitchedSentenceRef = useRef<string | null>(null);
+  const initialEntrySpokenSheetRef = useRef<string | null>(null);
 
   useEffect(() => {
     setCurrentIndex(0);
@@ -190,35 +190,14 @@ export default function ReaderView({
 
   useEffect(() => {
     if (!current) return;
-    if (translationSwitchedSentenceRef.current === current.sentence) {
-      stopSpeech();
-      return;
-    }
-    if (
-      translationSwitchedSentenceRef.current &&
-      translationSwitchedSentenceRef.current !== current.sentence
-    ) {
-      translationSwitchedSentenceRef.current = null;
-    }
-    if (!soundEnabled) {
-      stopSpeech();
-      return;
-    }
+    if (initialEntrySpokenSheetRef.current === sheet.name) return;
+    initialEntrySpokenSheetRef.current = sheet.name;
+    if (!soundEnabled) return;
 
-    let cancelled = false;
-
-    async function run() {
-      await speakText(current.sentence, soundEnabled, 1, voiceURI, sheet.language);
-      if (cancelled) return;
-    }
-
-    void run();
-
-    return () => {
-      cancelled = true;
-      stopSpeech();
-    };
-  }, [currentIndex, current?.sentence, repeatCount, soundEnabled, voiceURI, sheet.language]);
+    void speakText(current.sentence, true, 1, voiceURI, sheet.language).catch(() => {
+      // Initial auto playback should fail silently.
+    });
+  }, [sheet.name, current, soundEnabled, voiceURI, sheet.language]);
 
   useEffect(() => {
     setRandomEnabled(chapterSettings?.randomEnabled ?? false);
@@ -306,6 +285,7 @@ export default function ReaderView({
   const goPrev = () => {
     if (actionLocked || currentIndex === 0) return;
     startActionCooldown();
+    stopSpeech();
 
     setCurrentIndex((prev) => prev - 1);
     setSpokenCount(initialSpokenCount);
@@ -314,6 +294,7 @@ export default function ReaderView({
   const goNext = async () => {
     if (actionLocked) return;
     startActionCooldown();
+    stopSpeech();
 
     if (isLast) return;
 
@@ -413,6 +394,7 @@ export default function ReaderView({
 
     const next = !randomEnabled;
     setRandomEnabled(next);
+    stopSpeech();
 
     await saveChapterSettings({
       uid: userId,
@@ -445,7 +427,6 @@ export default function ReaderView({
 
   const handleTranslationLanguageClick = (lang: LanguageCode) => {
     pendingTranslationPinnedSentenceRef.current = current.sentence;
-    translationSwitchedSentenceRef.current = current.sentence;
     stopSpeech();
     onChangeTranslationLanguage?.(lang);
   };
