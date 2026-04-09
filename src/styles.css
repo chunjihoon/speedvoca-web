@@ -662,6 +662,33 @@ textarea::placeholder {
   line-height: 1.45;
 }
 
+.settings-share-cta {
+  width: 100%;
+  border: none;
+  background: rgba(103, 213, 95, 0.14);
+  border-radius: 14px;
+  padding: 12px 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-align: left;
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.settings-share-cta:hover {
+  background: rgba(103, 213, 95, 0.22);
+}
+
+.settings-share-icon {
+  width: 22px;
+  height: 22px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
 .repeat-wrap {
   display: flex;
   gap: 8px;
@@ -1103,6 +1130,39 @@ textarea::placeholder {
   justify-content: flex-end;
   gap: 10px;
   margin-top: 20px;
+}
+
+.share-sheet-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(17, 24, 39, 0.42);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  z-index: 2100;
+  padding: 0 12px calc(12px + env(safe-area-inset-bottom));
+}
+
+.share-sheet {
+  width: min(520px, 100%);
+  background: var(--surface);
+  border-radius: 20px;
+  padding: 16px;
+  box-shadow: 0 -12px 34px rgba(15, 23, 42, 0.18);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.share-sheet h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.share-sheet-actions {
+  display: grid;
+  gap: 10px;
 }
 
 /* =========================
@@ -1888,6 +1948,23 @@ textarea::placeholder {
   min-width: 0;
 }
 
+.reader-inline-share {
+  width: 44px;
+  min-width: 44px;
+  height: 44px;
+  padding: 0;
+  border-radius: 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.reader-inline-share-icon {
+  width: 22px;
+  height: 22px;
+  object-fit: contain;
+}
+
 .reader-inline-select {
   min-width: 150px;
   height: 44px;
@@ -1933,6 +2010,17 @@ textarea::placeholder {
   display: flex;
   align-items: center;
   justify-content: center;
+  position: relative;
+  padding-bottom: 42px;
+}
+
+.reader-font-scale-controls {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .reader-translation-box {
@@ -2088,8 +2176,21 @@ textarea::placeholder {
     min-width: 132px;
   }
 
+  .reader-inline-share {
+    width: 44px;
+    min-width: 44px;
+    height: 44px;
+  }
+
   .reader-inline-favorite {
     font-size: 34px;
+  }
+
+  .reader-font-scale-controls .control-btn {
+    height: 38px;
+    min-height: 38px;
+    font-size: 13px;
+    padding: 0 10px;
   }
 
   .reader-translation-box {

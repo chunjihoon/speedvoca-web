@@ -175,6 +175,7 @@ export default function App() {
 
   const [settingsMap, setSettingsMap] = useState<Record<string, { randomEnabled?: boolean; fontScale?: number }>>({});
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [shareSheetOpen, setShareSheetOpen] = useState(false);
   const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false);
   //const [loginModalOpen, setLoginModalOpen] = useState(false);
   const [loginPromptOpen, setLoginPromptOpen] = useState(false);
@@ -690,6 +691,71 @@ export default function App() {
     setRepeatCount(value);
   };
 
+  const handleShareApp = async () => {
+    const title = "Loopeak";
+    const text =
+      appLanguage === "ko"
+        ? "더 많은 친구들과 Loopeak으로 문장 학습을 시작해보세요!"
+        : "Start sentence learning with more friends on Loopeak!";
+    const url = window.location.origin;
+    const sharePayload = { title, text, url };
+
+    try {
+      if (window.isSecureContext && navigator.share) {
+        await navigator.share(sharePayload);
+        return;
+      }
+    } catch {
+      // Fallback bottom sheet handles cancelled/unsupported cases.
+    }
+
+    setShareSheetOpen(true);
+  };
+
+  const handleCopyShareLink = async () => {
+    const url = window.location.origin;
+
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(url);
+      } else {
+        const temp = document.createElement("textarea");
+        temp.value = url;
+        temp.style.position = "fixed";
+        temp.style.opacity = "0";
+        document.body.appendChild(temp);
+        temp.focus();
+        temp.select();
+        document.execCommand("copy");
+        document.body.removeChild(temp);
+      }
+      alert(ui.settings.shareCopied);
+    } finally {
+      setShareSheetOpen(false);
+    }
+  };
+
+  const handleShareByMessage = () => {
+    const url = window.location.origin;
+    const text =
+      appLanguage === "ko"
+        ? `Loopeak 같이 써봐요! ${url}`
+        : `Try Loopeak with me! ${url}`;
+    window.location.href = `sms:?&body=${encodeURIComponent(text)}`;
+    setShareSheetOpen(false);
+  };
+
+  const handleShareByMail = () => {
+    const url = window.location.origin;
+    const subject = appLanguage === "ko" ? "Loopeak 공유" : "Share Loopeak";
+    const body =
+      appLanguage === "ko"
+        ? `Loopeak 링크를 공유합니다.\n${url}`
+        : `Sharing Loopeak link:\n${url}`;
+    window.location.href = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    setShareSheetOpen(false);
+  };
+
   // const handleExitReader = () => {
   //   setExitConfirmOpen(true);
   // };
@@ -1003,6 +1069,7 @@ const handleDeleteChapter = async (sheet: SheetContent) => {
               showLoginPrompt(ui.loginPrompt.quickLoginTitle, ui.loginPrompt.quickLoginDescription)
             }
             onLogout={handleRequestLogout}
+            onShare={handleShareApp}
             isDeveloperAccount={isDeveloperAccount}
             developerModeEnabled={developerModeEnabled}
             onToggleDeveloperMode={() => setDeveloperModeEnabled((prev) => !prev)}
@@ -1022,6 +1089,25 @@ const handleDeleteChapter = async (sheet: SheetContent) => {
             onLoginWithGoogle={handleLogin}
             ui={ui}
           />
+
+          {shareSheetOpen && (
+            <div className="share-sheet-overlay" onClick={() => setShareSheetOpen(false)}>
+              <div className="share-sheet" onClick={(e) => e.stopPropagation()}>
+                <h3>{ui.settings.shareSheetTitle}</h3>
+                <div className="share-sheet-actions">
+                  <button className="control-btn" type="button" onClick={handleShareByMessage}>
+                    {ui.settings.shareByMessage}
+                  </button>
+                  <button className="control-btn" type="button" onClick={handleShareByMail}>
+                    {ui.settings.shareByMail}
+                  </button>
+                  <button className="control-btn" type="button" onClick={handleCopyShareLink}>
+                    {ui.settings.shareCopyLink}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
 
           {logoutConfirmOpen && (
             <div className="confirm-overlay" onClick={() => setLogoutConfirmOpen(false)}>
@@ -1289,6 +1375,7 @@ const handleDeleteChapter = async (sheet: SheetContent) => {
               ? handleChangeRecommendedTranslationLanguage
               : undefined
           }
+          onShare={handleShareApp}
           ui={ui}
         />
       )}

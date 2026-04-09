@@ -1,4 +1,5 @@
 import type { TtsVoiceOption } from "../types/content";
+import { waitForLevelUpPriorityToEnd } from "./audioPriority";
 
 let currentAudio: HTMLAudioElement | null = null;
 
@@ -80,6 +81,7 @@ export async function speakText(
 ): Promise<void> {
   if (!enabled || !text.trim()) return;
 
+  await waitForLevelUpPriorityToEnd();
   stopSpeech();
 
   const voiceId = voiceURI || getDefaultVoiceIdByLanguage(language);
@@ -103,6 +105,7 @@ export async function speakText(
   }
 
   const data = await res.json();
+  await waitForLevelUpPriorityToEnd();
 
   return new Promise((resolve, reject) => {
     const audio = new Audio(data.audioUrl);

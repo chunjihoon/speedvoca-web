@@ -44,6 +44,13 @@ type UiText = {
     levelEffectTest: string;
     logout: string;
     loginGoogle: string;
+    shareCta: string;
+    shareAria: string;
+    shareSheetTitle: string;
+    shareCopyLink: string;
+    shareByMessage: string;
+    shareByMail: string;
+    shareCopied: string;
     logoutConfirmTitle: string;
     logoutConfirmDescription: string;
   };
@@ -172,6 +179,13 @@ export const UI_TEXT: Record<AppLanguage, UiText> = {
       levelEffectTest: "레벨업 이펙트 테스트",
       logout: "로그아웃",
       loginGoogle: "Google 로그인",
+      shareCta: "더 많은 친구들에게 Loopeak을 공유해보세요!",
+      shareAria: "앱 공유하기",
+      shareSheetTitle: "친구에게 공유하기",
+      shareCopyLink: "링크 복사",
+      shareByMessage: "메시지로 공유",
+      shareByMail: "메일로 공유",
+      shareCopied: "링크가 복사되었습니다.",
       logoutConfirmTitle: "정말 로그아웃하시겠습니까?",
       logoutConfirmDescription: "현재 계정에서 로그아웃됩니다.",
     },
@@ -182,7 +196,7 @@ export const UI_TEXT: Record<AppLanguage, UiText> = {
       googleOnlyFootnote: "현재는 Google 소셜 로그인만 지원합니다.",
       quickLoginTitle: "로그인",
       quickLoginDescription: "Google 계정으로 바로 시작할 수 있습니다.",
-      moreSamplesTitle: "로그인 후 더 많은 자료를 학습할 수 있습니다",
+      moreSamplesTitle: "로그인 후 더 많은 자료를 학습하세요!",
       moreSamplesDescription:
         "지금은 첫 번째 샘플만 체험할 수 있습니다. 로그인하면 나머지 자료를 사용할 수 있습니다.",
       importTitle: "학습 자료를 가져오려면 로그인하세요",
@@ -191,9 +205,9 @@ export const UI_TEXT: Record<AppLanguage, UiText> = {
       manualSaveDescription: "직접 입력한 학습 자료를 저장하고 계속 사용하려면 로그인해야 합니다.",
       deleteTitle: "챕터 삭제는 로그인 후 사용 가능합니다",
       deleteDescription: "내 학습 세트에서 챕터를 삭제하려면 로그인하세요.",
-      readerFeatureTitle: "로그인이 필요한 기능입니다",
+      readerFeatureTitle: "로그인 후 더 많은 기능을 사용해보세요!",
       readerFeatureDescription:
-        "즐겨찾기, 랜덤, 글자 크기 저장 같은 개인화 기능은 로그인 후 사용할 수 있습니다.",
+        "좀 더 자세한 기능은 로그인 후 사용할 수 있습니다.",
     },
     home: {
       myLearningSetsTitle: "내 학습 세트",
@@ -326,6 +340,13 @@ export const UI_TEXT: Record<AppLanguage, UiText> = {
       levelEffectTest: "Test Level-Up Effect",
       logout: "Logout",
       loginGoogle: "Google Login",
+      shareCta: "Share Loopeak with more friends!",
+      shareAria: "Share app",
+      shareSheetTitle: "Share with friends",
+      shareCopyLink: "Copy link",
+      shareByMessage: "Share by message",
+      shareByMail: "Share by email",
+      shareCopied: "Link copied.",
       logoutConfirmTitle: "Do you really want to log out?",
       logoutConfirmDescription: "You will be logged out of the current account.",
     },
@@ -336,7 +357,7 @@ export const UI_TEXT: Record<AppLanguage, UiText> = {
       googleOnlyFootnote: "Currently, only Google social login is supported.",
       quickLoginTitle: "Login",
       quickLoginDescription: "Start right away with your Google account.",
-      moreSamplesTitle: "Login to access more contents",
+      moreSamplesTitle: "Login to access more contents!",
       moreSamplesDescription:
         "Right now, only the first content is available. Login to unlock the rest.",
       importTitle: "Login to import study material",
@@ -348,7 +369,7 @@ export const UI_TEXT: Record<AppLanguage, UiText> = {
       deleteDescription: "Login to delete chapters from your learning sets.",
       readerFeatureTitle: "Login required",
       readerFeatureDescription:
-        "Personalized features such as favorites, random mode, and font size saving are available after login.",
+        "You can use more detail features after login.",
     },
     home: {
       myLearningSetsTitle: "My Learning Sets",

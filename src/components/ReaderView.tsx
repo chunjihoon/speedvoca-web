@@ -8,6 +8,7 @@ import forceNextImage from "../assets/forceNext.png";
 import replayImage from "../assets/replay.png";
 import shuffleOnImage from "../assets/shuffleOn.png";
 import shuffleOffImage from "../assets/shuffleOff.png";
+import shareImage from "../assets/share.png";
 import { FAVORITES_SHEET_NAME, type AppUiText } from "../constants/i18n";
 
 import {
@@ -47,6 +48,7 @@ type Props = {
     totalNextCount?: number;
     totalReplayCount?: number;
   }) => void;
+  onShare: () => void;
   ui: AppUiText;
 };
 
@@ -113,6 +115,7 @@ export default function ReaderView({
   translationOptions,
   onChangeTranslationLanguage,
   onGuestStatsDelta,
+  onShare,
   ui,
 }: Props) {
   const initialSpokenCount = Math.min(1, Math.max(repeatCount, 1));
@@ -470,22 +473,6 @@ export default function ReaderView({
                   {randomEnabled ? ui.reader.randomOn : ui.reader.randomOff}
                 </button>
 
-                <button
-                  className="control-btn"
-                  onClick={() => handleFontScale(-0.1)}
-                  type="button"
-                >
-                  -A
-                </button>
-
-                <button
-                  className="control-btn"
-                  onClick={() => handleFontScale(0.1)}
-                  type="button"
-                >
-                  +A
-                </button>
-
                 <select
                   className="control-btn reader-inline-select"
                   value={selectedVoiceURI ?? ""}
@@ -497,6 +484,15 @@ export default function ReaderView({
                     </option>
                   ))}
                 </select>
+
+                <button
+                  className="control-btn reader-inline-share"
+                  onClick={onShare}
+                  type="button"
+                  aria-label={ui.settings.shareAria}
+                >
+                  <img src={shareImage} alt="" className="reader-inline-share-icon" />
+                </button>
               </div>
 
               <button
@@ -515,6 +511,23 @@ export default function ReaderView({
                 style={{ fontSize: `calc(clamp(28px, 5vw, 48px) * ${fontScale})` }}
               >
                 {current.sentence}
+              </div>
+              <div className="reader-font-scale-controls">
+                <button
+                  className="control-btn"
+                  onClick={() => handleFontScale(-0.1)}
+                  type="button"
+                >
+                  -A
+                </button>
+
+                <button
+                  className="control-btn"
+                  onClick={() => handleFontScale(0.1)}
+                  type="button"
+                >
+                  +A
+                </button>
               </div>
             </div>
           </div>

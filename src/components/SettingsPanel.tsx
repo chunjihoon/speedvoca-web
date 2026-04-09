@@ -1,4 +1,5 @@
 import type { AppLanguage, AppUiText } from "../constants/i18n";
+import shareImage from "../assets/share.png";
 
 type Props = {
   open: boolean;
@@ -14,6 +15,7 @@ type Props = {
   userName: string;
   onLogin: () => void;
   onLogout: () => void;
+  onShare: () => void;
   totalNext: number;
   totalReplay: number;
   isDeveloperAccount: boolean;
@@ -39,6 +41,7 @@ export default function SettingsPanel({
   userName,
   onLogin,
   onLogout,
+  onShare,
   totalNext,
   totalReplay,
   isDeveloperAccount,
@@ -136,6 +139,11 @@ export default function SettingsPanel({
         )}
 
         <div className="settings-section account-block">
+          <button className="settings-share-cta" onClick={onShare} type="button">
+            <img src={shareImage} alt="" className="settings-share-icon" />
+            <span>{ui.settings.shareCta}</span>
+          </button>
+
           {isLoggedIn ? (
             <div className="account-row">
               <div className="user-chip">{userName}</div>
