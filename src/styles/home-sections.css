@@ -347,3 +347,179 @@
       text-align: center;
     }
   }
+
+/* =========================
+   MY LEARNING STABLE GRID
+   - 2 rows + horizontal scroll
+   - square cells
+   - stable gap, no overlap
+========================= */
+
+.section-primary {
+  --my-card-gap: 12px;
+  --my-card-side: 2px;
+  --my-card-size: 160px;
+}
+
+.section-primary .home-horizontal-rail {
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+.section-primary .home-horizontal-rail > .sheet-list {
+  display: grid !important;
+  grid-auto-flow: column !important;
+  grid-template-rows: repeat(2, minmax(0, var(--my-card-size))) !important;
+  grid-auto-columns: var(--my-card-size) !important;
+  grid-template-columns: none !important;
+  width: max-content !important;
+  gap: var(--my-card-gap) !important;
+  padding: 0 var(--my-card-side) 10px !important;
+  align-items: stretch !important;
+  align-content: start !important;
+}
+
+.section-primary .sheet-card-wrap {
+  width: var(--my-card-size) !important;
+  min-width: var(--my-card-size) !important;
+}
+
+.section-primary .my-sheet-card {
+  width: var(--my-card-size) !important;
+  height: var(--my-card-size) !important;
+  aspect-ratio: 1 / 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0 !important;
+  max-height: none !important;
+  padding: 9px !important;
+  border-radius: 18px !important;
+  overflow: hidden !important;
+  position: relative;
+}
+
+.section-primary .sheet-card-header {
+  gap: 8px;
+  margin-bottom: 2px;
+  align-items: flex-start;
+  padding-right: 34px;
+}
+
+.section-primary .sheet-card-actions {
+  position: absolute;
+  top: 9px;
+  right: 9px;
+  margin-left: 0;
+  align-self: auto;
+  z-index: 2;
+}
+
+.section-primary .sheet-card-title-wrap {
+  min-width: 0;
+  flex: 1;
+}
+
+.section-primary .sheet-card-title {
+  font-size: clamp(13px, 2.35vw, 20px);
+  line-height: 1.16;
+  -webkit-line-clamp: 2;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+
+.section-primary .sheet-card-delete-btn {
+  width: 30px;
+  height: 30px;
+}
+
+.section-primary .sheet-card-delete-icon {
+  width: 14px;
+  height: 14px;
+}
+
+.section-primary .sheet-card-meta {
+  margin-bottom: 6px;
+  gap: 6px;
+  min-height: 42px;
+  align-items: center;
+}
+
+.section-primary .sheet-card-sentence-badge {
+  width: auto;
+  height: auto;
+  min-height: 0;
+  padding: 0;
+  font-size: 12px;
+  justify-content: flex-start;
+}
+
+.section-primary .sheet-card-stats-grid {
+  margin-top: auto;
+  gap: 6px;
+  align-self: stretch;
+  width: 100%;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.section-primary .sheet-stat-box {
+  min-height: 58px !important;
+  padding: 6px 7px;
+  border-radius: 12px;
+  gap: 3px;
+  width: 100%;
+  min-width: 0;
+}
+
+.section-primary .sheet-stat-label {
+  font-size: 10px;
+}
+
+.section-primary .sheet-stat-value {
+  font-size: clamp(15px, 2.8vw, 24px);
+}
+
+@media (max-width: 767px) {
+  .section-primary {
+    --my-card-gap: 10px;
+    --my-card-side: 2px;
+    /* Mobile target: 2 columns x 2 rows visible */
+    --my-card-size: clamp(146px, calc((100vw - 76px) / 2), 190px);
+  }
+
+  .section-primary .sheet-card-title {
+    font-size: clamp(12px, 4.1vw, 18px);
+    -webkit-line-clamp: 2;
+  }
+
+  .section-primary .sheet-card-sentence-badge {
+    width: auto;
+    height: auto;
+    min-height: 0;
+    font-size: 11px;
+  }
+
+  .section-primary .sheet-stat-label {
+    font-size: 10px;
+  }
+
+  .section-primary .sheet-stat-value {
+    font-size: clamp(14px, 5vw, 22px);
+  }
+
+  .section-primary .sheet-stat-box {
+    min-height: 54px !important;
+    padding: 7px 8px 6px;
+  }
+}
+
+@media (min-width: 768px) {
+  .section-primary {
+    --my-card-gap: 14px;
+    --my-card-side: 4px;
+    --my-card-size: 220px;
+  }
+}

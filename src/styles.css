@@ -51,6 +51,20 @@
   --shadow-md: 0 16px 36px rgba(15, 23, 42, 0.10);
 }
 
+@font-face {
+  font-family: "SANGJU-Gotgam";
+  src: url("./assets/fonts/SANGJU-Gotgam.ttf") format("truetype");  
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+.sangju-gotgam {
+  font-family: "SANGJU-Gotgam", "Noto Sans KR", sans-serif;
+  letter-spacing: -0.03em;
+  color: var(--c500)
+}
+
 * {
   box-sizing: border-box;
 }
@@ -2113,6 +2127,7 @@ textarea::placeholder {
   display: inline-flex;
   align-items: center;
   gap: 10px;
+  /* color: var(--c500); */
 }
 
 .section-title-icon {
@@ -2122,13 +2137,24 @@ textarea::placeholder {
   flex-shrink: 0;
 }
 
+.section-primary .section-title-icon,
+.section-secondary .section-title-icon {
+  width: 34px;
+  height: 34px;
+}
+
+.section-secondary .section-title-icon {
+  width: 40px;
+  height: 40px;
+}
+
 /* 2026.04.07 - 마이러닝셋 카드섹션 관련 */
 .sheet-card-wrap {
   min-width: 0;
 }
 
 .sheet-card.my-sheet-card {
-  background: #ffffff;
+  background: rgba(255, 255, 255, 0.45);
   border-radius: 28px;
   padding: 20px 18px;
   min-height: 208px;
@@ -2185,6 +2211,7 @@ textarea::placeholder {
   align-items: center;
   justify-content: flex-end;
   flex-shrink: 0;
+  margin-left: auto;
 }
 
 .sheet-card-delete-btn {
@@ -2202,6 +2229,15 @@ textarea::placeholder {
   transition:
     background 0.16s ease,
     transform 0.16s ease;
+}
+
+.sheet-card-delete-icon {
+  width: 16px;
+  height: 16px;
+  object-fit: contain;
+  display: block;
+  pointer-events: none;
+  user-select: none;
 }
 
 .sheet-card-delete-btn:hover {
@@ -2226,14 +2262,18 @@ textarea::placeholder {
 .sheet-card-sentence-badge {
   display: inline-flex;
   align-items: center;
-  min-height: 32px;
-  padding: 6px 12px;
-  border-radius: 999px;
-  background: #f2f6f1;
+  justify-content: flex-start;
+  width: auto;
+  height: auto;
+  min-height: 0;
+  padding: 0;
+  border-radius: 0;
+  background: transparent;
   color: #627081;
   font-size: 14px;
   font-weight: 700;
-  line-height: 1;
+  line-height: 1.2;
+  flex-shrink: 1;
 }
 
 .sheet-badge {
@@ -2251,7 +2291,7 @@ textarea::placeholder {
 
 .sheet-card-stats-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
   margin-top: auto;
 }
@@ -2263,9 +2303,12 @@ textarea::placeholder {
   border: 1px solid #edf2ed;
   display: flex;
   flex-direction: column;
+  align-items: center;
+  text-align: center;
   gap: 6px;
   min-height: 78px;
   justify-content: center;
+  width: 100%;
 }
 
 .sheet-stat-label {
@@ -2273,6 +2316,7 @@ textarea::placeholder {
   font-weight: 700;
   color: #7b8794;
   line-height: 1;
+  text-align: center;
 }
 
 .sheet-stat-value {
@@ -2280,6 +2324,7 @@ textarea::placeholder {
   line-height: 1;
   font-weight: 800;
   color: #1b2430;
+  text-align: center;
 }
 
 /* 모바일 미세 조정 */
@@ -2355,8 +2400,11 @@ textarea::placeholder {
   }
 
   .sheet-card-sentence-badge {
+    width: auto;
+    height: auto;
+    min-height: 0;
     font-size: 13px;
-    padding: 6px 10px;
+    padding: 0;
   }
 
   .sheet-card-stats-grid {

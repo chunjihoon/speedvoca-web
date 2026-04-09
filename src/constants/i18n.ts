@@ -43,6 +43,8 @@ type UiText = {
     levelEffectTest: string;
     logout: string;
     loginGoogle: string;
+    logoutConfirmTitle: string;
+    logoutConfirmDescription: string;
   };
   loginPrompt: {
     requiredTitle: string;
@@ -154,20 +156,22 @@ export const UI_TEXT: Record<AppLanguage, UiText> = {
     },
     settings: {
       title: "설정",
-      soundOn: "🔊 음성 켜짐",
-      soundOff: "🔇 음성 꺼짐",
-      repeat: "반복",
+      soundOn: "🔊 성우 켜짐",
+      soundOff: "🔇 성우 꺼짐",
+      repeat: "문장당 반복 횟수",
       studyStats: "학습 통계",
       next: "다음",
       replay: "리플레이",
       language: "언어",
       korean: "한국어",
-      english: "영어",
+      english: "English",
       developer: "개발자",
       developerMode: "개발자 모드",
       levelEffectTest: "레벨업 이펙트 테스트",
       logout: "로그아웃",
       loginGoogle: "Google 로그인",
+      logoutConfirmTitle: "정말 로그아웃하시겠습니까?",
+      logoutConfirmDescription: "현재 계정에서 로그아웃됩니다.",
     },
     loginPrompt: {
       requiredTitle: "로그인이 필요합니다",
@@ -305,9 +309,9 @@ export const UI_TEXT: Record<AppLanguage, UiText> = {
     },
     settings: {
       title: "Settings",
-      soundOn: "🔊 Sound On",
-      soundOff: "🔇 Sound Off",
-      repeat: "Repeat",
+      soundOn: "🔊 Voice On",
+      soundOff: "🔇 Voice Off",
+      repeat: "Repeat count",
       studyStats: "Study Stats",
       next: "Next",
       replay: "Replay",
@@ -319,6 +323,8 @@ export const UI_TEXT: Record<AppLanguage, UiText> = {
       levelEffectTest: "Test Level-Up Effect",
       logout: "Logout",
       loginGoogle: "Google Login",
+      logoutConfirmTitle: "Do you really want to log out?",
+      logoutConfirmDescription: "You will be logged out of the current account.",
     },
     loginPrompt: {
       requiredTitle: "Login Required",

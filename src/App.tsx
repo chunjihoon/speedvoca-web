@@ -49,7 +49,6 @@ import { playLevelUpSound } from "./lib/levelUpSound";
 import { recommendedContentMetas, type RecommendedContentMeta } from "./data/recommendContents";
 import { fetchRecommendedSheet } from "./lib/googleSheets";
 import { auth } from "./lib/firebase";
-import "./styles/home-sections.css";
 import myLearningIcon from "./assets/mylearning.png";
 import recommendIcon from "./assets/recommend.png";
 import importIcon from "./assets/import.png";
@@ -176,6 +175,7 @@ export default function App() {
 
   const [settingsMap, setSettingsMap] = useState<Record<string, { randomEnabled?: boolean; fontScale?: number }>>({});
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false);
   //const [loginModalOpen, setLoginModalOpen] = useState(false);
   const [loginPromptOpen, setLoginPromptOpen] = useState(false);
   const [loginPromptTitle, setLoginPromptTitle] = useState(ui.loginPrompt.requiredTitle);
@@ -795,7 +795,12 @@ const handleDeleteChapter = async (sheet: SheetContent) => {
     await loginWithGoogle();
   };
 
-  const handleLogout = async () => {
+  const handleRequestLogout = () => {
+    setLogoutConfirmOpen(true);
+  };
+
+  const handleConfirmLogout = async () => {
+    setLogoutConfirmOpen(false);
     stopSpeech();
     await logout();
     setSelectedSheet(null);
@@ -944,7 +949,7 @@ const handleDeleteChapter = async (sheet: SheetContent) => {
             onLogin={() =>
               showLoginPrompt(ui.loginPrompt.quickLoginTitle, ui.loginPrompt.quickLoginDescription)
             }
-            onLogout={handleLogout}
+            onLogout={handleRequestLogout}
             isDeveloperAccount={isDeveloperAccount}
             developerModeEnabled={developerModeEnabled}
             onToggleDeveloperMode={() => setDeveloperModeEnabled((prev) => !prev)}
@@ -964,6 +969,23 @@ const handleDeleteChapter = async (sheet: SheetContent) => {
             onLoginWithGoogle={handleLogin}
             ui={ui}
           />
+
+          {logoutConfirmOpen && (
+            <div className="confirm-overlay" onClick={() => setLogoutConfirmOpen(false)}>
+              <div className="confirm-modal" onClick={(e) => e.stopPropagation()}>
+                <h3 className="sangju-gotgam">{ui.settings.logoutConfirmTitle}</h3>
+                <p>{ui.settings.logoutConfirmDescription}</p>
+                <div className="confirm-actions">
+                  <button className="secondary-btn" onClick={() => setLogoutConfirmOpen(false)}>
+                    {ui.common.cancel}
+                  </button>
+                  <button className="primary-btn" onClick={handleConfirmLogout}>
+                    {ui.settings.logout}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </>
       )}
 
@@ -993,7 +1015,7 @@ const handleDeleteChapter = async (sheet: SheetContent) => {
                   className="section-title-icon"
                   aria-hidden="true"
                 />
-                  <span>{ui.home.myLearningSetsTitle}</span>
+                  <span className="sangju-gotgam">{ui.home.myLearningSetsTitle}</span>
                 </span>
               }
               description={ui.home.myLearningSetsDescription}
@@ -1019,7 +1041,7 @@ const handleDeleteChapter = async (sheet: SheetContent) => {
                   className="section-title-icon"
                   aria-hidden="true"
                 />
-                <span>{ui.home.recommendedTitle}</span>
+                <span className="sangju-gotgam">{ui.home.recommendedTitle}</span>
               </span>
             }
             description={ui.home.recommendedDescription}
@@ -1090,7 +1112,7 @@ const handleDeleteChapter = async (sheet: SheetContent) => {
 
           <SectionBlock
             title={
-              <span className="section-title-with-icon">
+              <span className="section-title-with-icon sangju-gotgam">
                 <img
                   src={importIcon}
                   alt=""

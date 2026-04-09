@@ -1,5 +1,6 @@
 import type { SheetContent } from "../types/content";
 import { FAVORITES_SHEET_NAME, type AppUiText } from "../constants/i18n";
+import trashIcon from "../assets/trash.png";
 
 type ChapterStat = {
   completedSentenceCount?: number;
@@ -67,7 +68,7 @@ export default function SheetList({
                         }}
                         aria-label={ui.sheet.deleteChapterAria}
                       >
-                        🗑️
+                        <img src={trashIcon} alt="" className="sheet-card-delete-icon" />
                       </button>
                     )}
                   </div>

@@ -24,7 +24,7 @@ export default function LoginPromptModal({
       <div className="login-modal" onClick={(e) => e.stopPropagation()}>
         <div className="login-modal-header">
           <div>
-            <h3>{title}</h3>
+            <h3 className="sangju-gotgam">{title}</h3>
             <p>{description}</p>
           </div>
           <button className="control-btn" onClick={onClose}>
