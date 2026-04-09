@@ -1,6 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { flushSync } from "react-dom";
 import type { LanguageCode, SheetContent, TtsVoiceOption } from "../types/content";
 import { speakText, stopSpeech } from "../lib/tts";
+import goNextImage from "../assets/goNext.png";
+import goPriorImage from "../assets/goPrior.png";
+import forceNextImage from "../assets/forceNext.png";
+import replayImage from "../assets/replay.png";
 import {
   isFavorite,
   recordCompletedTap,
@@ -165,9 +170,7 @@ export default function ReaderView({
 
     async function run() {
       await speakText(current.sentence, soundEnabled, 1, voiceURI, sheet.language);
-      if (!cancelled) {
-        setSpokenCount((prev) => Math.min(prev + 1, repeatCount));
-      }
+      if (cancelled) return;
     }
 
     void run();
@@ -254,33 +257,21 @@ export default function ReaderView({
   }
 
   const isLast = currentIndex === displayRows.length - 1;
+  const isReadyForNext = spokenCount >= repeatCount;
+  const replayActionImage = isReadyForNext ? goNextImage : replayImage;
+  const replayActionLabel = isReadyForNext ? "Go next" : "Replay";
   const statSheetName = isFavoritesSheet ? "Favorites" : sheet.name;
   const favoriteTargetSheetName = current.sourceSheetName || sheet.name;
 
-  const handleReplay = async () => {
-    if (actionLocked) return;
+  const goPrev = () => {
+    if (actionLocked || currentIndex === 0) return;
     startActionCooldown();
 
-    await speakText(current.sentence, soundEnabled, 1, voiceURI, sheet.language);
-    setSpokenCount((prev) => Math.min(prev + 1, repeatCount));
-
-    if (isLoggedIn && userId) {
-      void Promise.all([
-        recordReplay(userId, statSheetName),
-        recordCompletedTap(userId, statSheetName),
-      ]).then(() => {
-        void onStatsChanged?.();
-      });
-    }
-  };
-
-  const goPrev = () => {
-    if (currentIndex === 0) return;
     setCurrentIndex((prev) => prev - 1);
     setSpokenCount(0);
   };
 
-  const forceNext = async () => {
+  const goNext = async () => {
     if (actionLocked) return;
     startActionCooldown();
 
@@ -292,6 +283,37 @@ export default function ReaderView({
     if (isLoggedIn && userId) {
       void Promise.all([
         recordNext(userId, statSheetName),
+        recordCompletedTap(userId, statSheetName),
+      ]).then(() => {
+        void onStatsChanged?.();
+      });
+    }
+  };
+
+  const handleReplayAction = async () => {
+    if (isReadyForNext) {
+      await goNext();
+      return;
+    }
+
+    if (actionLocked) return;
+    startActionCooldown();
+
+    flushSync(() => {
+      setSpokenCount((prev) => Math.min(prev + 1, repeatCount));
+    });
+
+    if (soundEnabled) {
+      window.requestAnimationFrame(() => {
+        void speakText(current.sentence, true, 1, voiceURI, sheet.language).catch(() => {
+          // Keep count progression based on user taps even if playback fails.
+        });
+      });
+    }
+
+    if (isLoggedIn && userId) {
+      void Promise.all([
+        recordReplay(userId, statSheetName),
         recordCompletedTap(userId, statSheetName),
       ]).then(() => {
         void onStatsChanged?.();
@@ -487,44 +509,60 @@ export default function ReaderView({
         <div className="reader-bottom-dock">
           <div className="reader-bottom-actions">
             <button
-              className="secondary-btn"
+              className={`icon-action-btn ${actionLocked ? "cooldown" : ""}`}
               onClick={goPrev}
-              disabled={currentIndex === 0}
+              disabled={currentIndex === 0 || actionLocked}
+              aria-label="Go prior"
               type="button"
             >
-              Prior
-            </button>
-
-            <button
-              className={`speak-btn ${actionLocked ? "cooldown" : ""}`}
-              onClick={handleReplay}
-              disabled={actionLocked}
-              type="button"
-            >
-              <span className="speak-btn-label">
-                {actionLocked ? "Please wait..." : "🔊 Replay"}
-              </span>
+              <img src={goPriorImage} alt="" className="icon-action-image" />
               {actionLocked && (
                 <span
-                  key={cooldownToken}
-                  className="speak-btn-cooldown-bar"
+                  key={`prior-${cooldownToken}`}
+                  className="icon-action-cooldown-bar"
                   style={{ animationDuration: `${ACTION_COOLDOWN_MS}ms` }}
                 />
               )}
             </button>
 
             <button
-              className={`secondary-btn ${actionLocked ? "cooldown" : ""}`}
-              onClick={forceNext}
-              disabled={isLast || actionLocked}
+              className={`icon-action-btn main-action-btn ${actionLocked ? "cooldown" : ""}`}
+              onClick={handleReplayAction}
+              disabled={actionLocked || (isReadyForNext && isLast)}
+              aria-label={replayActionLabel}
               type="button"
             >
-              {actionLocked ? "Cooling down..." : "Force Next"}
+              <span className="replay-action-stack">
+                <img src={replayActionImage} alt="" className="icon-action-image" />
+                <span className="replay-action-count-inline">
+                  {spokenCount} / {repeatCount}
+                </span>
+              </span>
+              {actionLocked && (
+                <span
+                  key={`replay-${cooldownToken}`}
+                  className="icon-action-cooldown-bar"
+                  style={{ animationDuration: `${ACTION_COOLDOWN_MS}ms` }}
+                />
+              )}
             </button>
-          </div>
 
-          <div className="repeat-counter reader-repeat-counter">
-            {spokenCount} / {repeatCount}
+            <button
+              className={`icon-action-btn ${actionLocked ? "cooldown" : ""}`}
+              onClick={goNext}
+              disabled={isLast || actionLocked}
+              aria-label="Force next"
+              type="button"
+            >
+              <img src={forceNextImage} alt="" className="icon-action-image" />
+              {actionLocked && (
+                <span
+                  key={`force-next-${cooldownToken}`}
+                  className="icon-action-cooldown-bar"
+                  style={{ animationDuration: `${ACTION_COOLDOWN_MS}ms` }}
+                />
+              )}
+            </button>
           </div>
         </div>
       </section>
