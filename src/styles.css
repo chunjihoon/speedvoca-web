@@ -2595,7 +2595,8 @@ textarea::placeholder {
   border: none;
   background: rgba(103, 213, 95, 0.14);
   width: 100%;
-  min-height: 64px;
+  height: 86px;
+  min-height: 86px;
   border-radius: 18px;
   padding: 8px 10px;
   cursor: pointer;
@@ -2632,16 +2633,21 @@ textarea::placeholder {
 
 .icon-action-image {
   display: block;
-  width: 56px;
-  height: 56px;
+  width: 48px;
+  height: 48px;
   object-fit: contain;
   pointer-events: none;
   user-select: none;
 }
 
 .main-action-btn .icon-action-image {
-  width: 42px;
-  height: 42px;
+  width: 48px;
+  height: 48px;
+}
+
+.main-action-btn .icon-action-image.go-next-ready {
+  width: 72px;
+  height: 48px;
 }
 
 .replay-action-stack {
@@ -2684,19 +2690,25 @@ textarea::placeholder {
 
 @media (max-width: 900px) {
   .icon-action-btn {
-    min-height: 56px;
+    height: 78px;
+    min-height: 78px;
     border-radius: 16px;
     padding: 7px 8px;
   }
 
   .icon-action-image {
-    width: 50px;
-    height: 50px;
+    width: 42px;
+    height: 42px;
   }
 
   .main-action-btn .icon-action-image {
-    width: 38px;
-    height: 38px;
+    width: 42px;
+    height: 42px;
+  }
+
+  .main-action-btn .icon-action-image.go-next-ready {
+    width: 64px;
+    height: 42px;
   }
 
   .replay-action-count-inline {

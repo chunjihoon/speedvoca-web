@@ -146,6 +146,7 @@ export default function ReaderView({
 
   const current = useMemo(() => displayRows[currentIndex], [displayRows, currentIndex]);
   const pendingTranslationPinnedSentenceRef = useRef<string | null>(null);
+  const translationSwitchedSentenceRef = useRef<string | null>(null);
 
   useEffect(() => {
     setCurrentIndex(0);
@@ -189,6 +190,16 @@ export default function ReaderView({
 
   useEffect(() => {
     if (!current) return;
+    if (translationSwitchedSentenceRef.current === current.sentence) {
+      stopSpeech();
+      return;
+    }
+    if (
+      translationSwitchedSentenceRef.current &&
+      translationSwitchedSentenceRef.current !== current.sentence
+    ) {
+      translationSwitchedSentenceRef.current = null;
+    }
     if (!soundEnabled) {
       stopSpeech();
       return;
@@ -434,6 +445,8 @@ export default function ReaderView({
 
   const handleTranslationLanguageClick = (lang: LanguageCode) => {
     pendingTranslationPinnedSentenceRef.current = current.sentence;
+    translationSwitchedSentenceRef.current = current.sentence;
+    stopSpeech();
     onChangeTranslationLanguage?.(lang);
   };
 
@@ -590,7 +603,11 @@ export default function ReaderView({
               type="button"
             >
               <span className="replay-action-stack">
-                <img src={replayActionImage} alt="" className="icon-action-image" />
+                <img
+                  src={replayActionImage}
+                  alt=""
+                  className={`icon-action-image ${isReadyForNext ? "go-next-ready" : ""}`}
+                />
                 <span className="replay-action-count-inline">
                   {spokenCount} / {repeatCount}
                 </span>
