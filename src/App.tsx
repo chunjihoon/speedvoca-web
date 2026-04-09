@@ -27,6 +27,7 @@ import {
 import { useAuth } from "./hooks/useAuth";
 import { loginWithGoogle, logout } from "./lib/auth";
 import {
+  applyUserStatsDelta,
   loadFavorites,
   loadImportedChapters,
   loadUserChapterMeta,
@@ -47,6 +48,7 @@ import { playLevelUpSound } from "./lib/levelUpSound";
 
 import { recommendedContentMetas, type RecommendedContentMeta } from "./data/recommendContents";
 import { fetchRecommendedSheet } from "./lib/googleSheets";
+import { auth } from "./lib/firebase";
 import "./styles/home-sections.css";
 import myLearningIcon from "./assets/mylearning.png";
 import recommendIcon from "./assets/recommend.png";
@@ -60,6 +62,62 @@ type VisibleChapterStat = {
   replayCount?: number;
   favoriteCount?: number;
 };
+
+type TotalStats = {
+  totalCompletedSentenceCount: number;
+  totalNextCount: number;
+  totalReplayCount: number;
+};
+
+const EMPTY_TOTAL_STATS: TotalStats = {
+  totalCompletedSentenceCount: 0,
+  totalNextCount: 0,
+  totalReplayCount: 0,
+};
+
+const GUEST_PENDING_STATS_KEY = "speedvoca_guest_pending_stats";
+
+function sanitizeStats(value: Partial<TotalStats> | null | undefined): TotalStats {
+  return {
+    totalCompletedSentenceCount: Math.max(0, value?.totalCompletedSentenceCount ?? 0),
+    totalNextCount: Math.max(0, value?.totalNextCount ?? 0),
+    totalReplayCount: Math.max(0, value?.totalReplayCount ?? 0),
+  };
+}
+
+function loadGuestPendingStats(): TotalStats {
+  try {
+    const raw = localStorage.getItem(GUEST_PENDING_STATS_KEY);
+    if (!raw) return EMPTY_TOTAL_STATS;
+    const parsed = JSON.parse(raw) as Partial<TotalStats>;
+    return sanitizeStats(parsed);
+  } catch {
+    return EMPTY_TOTAL_STATS;
+  }
+}
+
+function saveGuestPendingStats(stats: TotalStats) {
+  const next = sanitizeStats(stats);
+  const hasValue =
+    next.totalCompletedSentenceCount > 0 ||
+    next.totalNextCount > 0 ||
+    next.totalReplayCount > 0;
+
+  if (!hasValue) {
+    localStorage.removeItem(GUEST_PENDING_STATS_KEY);
+    return;
+  }
+
+  localStorage.setItem(GUEST_PENDING_STATS_KEY, JSON.stringify(next));
+}
+
+function hasAnyStats(stats: TotalStats): boolean {
+  return (
+    stats.totalCompletedSentenceCount > 0 ||
+    stats.totalNextCount > 0 ||
+    stats.totalReplayCount > 0
+  );
+}
 
 function toChapterLanguage(lang: TargetLanguageCode): ChapterLanguage {
   switch (lang) {
@@ -97,6 +155,9 @@ export default function App() {
     totalNextCount: 0,
     totalReplayCount: 0,
   });
+  const [guestPendingStats, setGuestPendingStats] = useState<TotalStats>(() =>
+    loadGuestPendingStats()
+  );
   const [favoriteRows, setFavoriteRows] = useState<{ sentence: string; translation: string; sourceSheetName: string }[]>([]);
   const [importedSheets, setImportedSheets] = useState<SheetContent[]>([]);
 
@@ -226,14 +287,20 @@ export default function App() {
     setLoginPromptOpen(true);
   };
 
-  const EMPTY_TOTAL_STATS = {
-    totalCompletedSentenceCount: 0,
-    totalNextCount: 0,
-    totalReplayCount: 0,
-  };
+  useEffect(() => {
+    saveGuestPendingStats(guestPendingStats);
+  }, [guestPendingStats]);
 
-  const reloadUserData = async (targetUser = user) => {
+  const reloadRequestIdRef = useRef(0);
+  const reloadUserData = async (targetUser: typeof user) => {
+    const requestId = ++reloadRequestIdRef.current;
+    const targetUid = targetUser?.uid ?? null;
+
     if (!targetUser) {
+      if (auth.currentUser) {
+        return;
+      }
+
       setTitleMap({});
       setStatsMap({});
       setFavoriteRows([]);
@@ -241,7 +308,9 @@ export default function App() {
       setSettingsMap({});
       setTotalStats(EMPTY_TOTAL_STATS);
       setLoadedStatsUid(null);
-      setUserDataLoading(false);
+      if (requestId === reloadRequestIdRef.current) {
+        setUserDataLoading(false);
+      }
       return;
     }
 
@@ -277,6 +346,9 @@ export default function App() {
         };
       });
 
+      if (requestId !== reloadRequestIdRef.current) return;
+      if (auth.currentUser?.uid !== targetUid) return;
+
       setTitleMap(mappedTitles);
       setStatsMap(mappedStats);
       setFavoriteRows(
@@ -297,13 +369,65 @@ export default function App() {
       setTotalStats(stats);
       setLoadedStatsUid(targetUser.uid);
     } finally {
-      setUserDataLoading(false);
+      if (requestId === reloadRequestIdRef.current) {
+        setUserDataLoading(false);
+      }
     }
   };
 
   useEffect(() => {
-    void reloadUserData();
-  }, [user]);
+    if (authLoading) return;
+    void reloadUserData(user);
+  }, [user, authLoading]);
+
+  const syncGuestStatsInFlightUidRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!user) {
+      syncGuestStatsInFlightUidRef.current = null;
+      return;
+    }
+
+    if (syncGuestStatsInFlightUidRef.current === user.uid) return;
+    syncGuestStatsInFlightUidRef.current = user.uid;
+
+    const createdAt = user.metadata.creationTime ? Date.parse(user.metadata.creationTime) : NaN;
+    const lastSignInAt = user.metadata.lastSignInTime ? Date.parse(user.metadata.lastSignInTime) : NaN;
+    const isNewUser =
+      Number.isFinite(createdAt) &&
+      Number.isFinite(lastSignInAt) &&
+      Math.abs(createdAt - lastSignInAt) < 5000;
+
+    const pendingSnapshot = guestPendingStats;
+    const shouldApplyGuestStats = isNewUser && hasAnyStats(pendingSnapshot);
+
+    const run = async () => {
+      try {
+        if (shouldApplyGuestStats) {
+          await applyUserStatsDelta(user.uid, pendingSnapshot);
+          await reloadUserData(user);
+        }
+      } finally {
+        // After any login, guest stats are fully discarded.
+        setGuestPendingStats(EMPTY_TOTAL_STATS);
+        localStorage.removeItem(GUEST_PENDING_STATS_KEY);
+      }
+    };
+
+    void run();
+  }, [user, guestPendingStats]);
+
+  const handleGuestStatsDelta = (updates: Partial<TotalStats>) => {
+    setGuestPendingStats((prev) => ({
+      totalCompletedSentenceCount:
+        prev.totalCompletedSentenceCount + (updates.totalCompletedSentenceCount ?? 0),
+      totalNextCount: prev.totalNextCount + (updates.totalNextCount ?? 0),
+      totalReplayCount: prev.totalReplayCount + (updates.totalReplayCount ?? 0),
+    }));
+  };
+
+  const effectiveTotalStats: TotalStats = user
+    ? totalStats
+    : guestPendingStats;
 
   const visibleSheets = useMemo(() => {
     const base = user ? [...importedSheets] : [];
@@ -383,12 +507,12 @@ export default function App() {
 
   const levelSummary = useMemo(() => {
     const totalXp = calculateTotalXp(
-      totalStats.totalNextCount,
-      totalStats.totalReplayCount
+      effectiveTotalStats.totalNextCount,
+      effectiveTotalStats.totalReplayCount
     );
   
     return getLevelSummary(totalXp);
-  }, [totalStats.totalNextCount, totalStats.totalReplayCount]);
+  }, [effectiveTotalStats.totalNextCount, effectiveTotalStats.totalReplayCount]);
 
   const activeDisplaySheet = useMemo<SheetContent | null>(() => {
     if (selectedRecommendedSession) {
@@ -409,32 +533,39 @@ export default function App() {
 
   /** 레벨업 관련 */
   const [showLevelUpEffect, setShowLevelUpEffect] = useState(false);
-  const prevLevelRef = useRef(levelSummary.currentLevel);
-  const hasInitializedLevelRef = useRef(false);
+  const levelEffectOwner = user ? `user:${user.uid}` : "guest";
+  const levelEffectReady = !user || loadedStatsUid === user.uid;
+  const levelEffectBaselineRef = useRef<{ owner: string; level: number } | null>(null);
+
   useEffect(() => {
-    if (user && loadedStatsUid !== user.uid) return;
-  
+    if (!levelEffectReady) return;
+
     const nextLevel = levelSummary.currentLevel;
-  
-    if (!hasInitializedLevelRef.current) {
-      prevLevelRef.current = nextLevel;
-      hasInitializedLevelRef.current = true;
+    const baseline = levelEffectBaselineRef.current;
+
+    // Reset baseline when viewer context changes (guest <-> user or different uid).
+    if (!baseline || baseline.owner !== levelEffectOwner) {
+      levelEffectBaselineRef.current = {
+        owner: levelEffectOwner,
+        level: nextLevel,
+      };
       return;
     }
-  
-    const prevLevel = prevLevelRef.current;
-  
-    if (nextLevel > prevLevel) {
+
+    if (nextLevel > baseline.level) {
       setShowLevelUpEffect(true);
       playLevelUpSound();
-  
+
       window.setTimeout(() => {
         setShowLevelUpEffect(false);
       }, 2200);
     }
-  
-    prevLevelRef.current = nextLevel;
-  }, [levelSummary.currentLevel, loadedStatsUid, user]);
+
+    levelEffectBaselineRef.current = {
+      owner: levelEffectOwner,
+      level: nextLevel,
+    };
+  }, [levelSummary.currentLevel, levelEffectOwner, levelEffectReady]);
 
 
   const handleSelectSheet = (sheet: SheetContent) => {
@@ -580,7 +711,7 @@ export default function App() {
         rows,
       });
   
-      await reloadUserData();
+      await reloadUserData(user);
   
       setManualTitle("");
       setManualContent("");
@@ -645,7 +776,7 @@ const handleDeleteChapter = async (sheet: SheetContent) => {
     if (!confirmed) return;
   
     await deleteImportedChapter(user.uid, sheet.name);
-    await reloadUserData();
+    await reloadUserData(user);
   
     if (selectedSheet?.name === sheet.name) {
       setSelectedSheet(null);
@@ -717,7 +848,7 @@ const handleDeleteChapter = async (sheet: SheetContent) => {
         });
       }
   
-      await reloadUserData();
+      await reloadUserData(user);
       alert(`${parsedSheets.length}개 챕터를 가져왔습니다.`);
     } catch (error) {
       console.error(error);
@@ -829,12 +960,12 @@ const handleDeleteChapter = async (sheet: SheetContent) => {
             userName={user?.displayName || user?.email || "User"}
             onLogin={() => showLoginPrompt("로그인", "Google 계정으로 바로 시작할 수 있습니다.")}
             onLogout={handleLogout}
-            totalNext={totalStats.totalNextCount}
-            totalReplay={totalStats.totalReplayCount}
             isDeveloperAccount={isDeveloperAccount}
             developerModeEnabled={developerModeEnabled}
             onToggleDeveloperMode={() => setDeveloperModeEnabled((prev) => !prev)}
             onTestLevelUpEffect={handleTestLevelUpEffect}
+            totalNext={effectiveTotalStats.totalNextCount}
+            totalReplay={effectiveTotalStats.totalReplayCount}
           />
 
           <LoginPromptModal
@@ -1082,7 +1213,8 @@ const handleDeleteChapter = async (sheet: SheetContent) => {
             )
           }
           userId={user?.uid}
-          onStatsChanged={reloadUserData}
+          onStatsChanged={() => reloadUserData(user)}
+          onGuestStatsDelta={handleGuestStatsDelta}
           chapterSettings={settingsMap[activeDisplaySheet.name]}
           exitConfirmOpen={exitConfirmOpen}
           onRequestExit={() => setExitConfirmOpen(true)}
@@ -1111,4 +1243,3 @@ const handleDeleteChapter = async (sheet: SheetContent) => {
 
   );
 }
-

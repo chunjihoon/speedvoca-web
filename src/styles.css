@@ -1845,6 +1845,19 @@ textarea::placeholder {
   font-weight: 700;
 }
 
+.reader-random-toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.reader-random-toggle-icon {
+  width: 20px;
+  height: 20px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
 .reader-inline-select:hover {
   background: rgba(103, 213, 95, 0.22);
 }
@@ -1856,6 +1869,7 @@ textarea::placeholder {
   flex-shrink: 0;
   padding: 4px 6px;
   font-size: 40px;
+  color: #111827;
 }
 
 .sentence-box-body {
@@ -2007,6 +2021,11 @@ textarea::placeholder {
     padding-top: 0;
     padding-bottom: 0;
     font-size: 14px;
+  }
+
+  .reader-random-toggle-icon {
+    width: 18px;
+    height: 18px;
   }
 
   .reader-inline-select {

@@ -6,6 +6,9 @@ import goNextImage from "../assets/goNext.png";
 import goPriorImage from "../assets/goPrior.png";
 import forceNextImage from "../assets/forceNext.png";
 import replayImage from "../assets/replay.png";
+import shuffleOnImage from "../assets/shuffleOn.png";
+import shuffleOffImage from "../assets/shuffleOff.png";
+
 import {
   isFavorite,
   recordCompletedTap,
@@ -38,6 +41,11 @@ type Props = {
   translationLanguage?: LanguageCode | null;
   translationOptions?: LanguageCode[];
   onChangeTranslationLanguage?: (lang: LanguageCode) => void;
+  onGuestStatsDelta?: (updates: {
+    totalCompletedSentenceCount?: number;
+    totalNextCount?: number;
+    totalReplayCount?: number;
+  }) => void;
 };
 
 function getTargetLanguageCode(sheetLanguage: string): LanguageCode {
@@ -102,9 +110,11 @@ export default function ReaderView({
   translationLanguage,
   translationOptions,
   onChangeTranslationLanguage,
+  onGuestStatsDelta,
 }: Props) {
+  const initialSpokenCount = Math.min(1, Math.max(repeatCount, 1));
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [spokenCount, setSpokenCount] = useState(0);
+  const [spokenCount, setSpokenCount] = useState(initialSpokenCount);
   const [randomEnabled, setRandomEnabled] = useState(chapterSettings?.randomEnabled ?? false);
   const [fontScale, setFontScale] = useState(chapterSettings?.fontScale ?? 1);
   const [favoriteActive, setFavoriteActive] = useState(false);
@@ -132,8 +142,8 @@ export default function ReaderView({
 
   useEffect(() => {
     setCurrentIndex(0);
-    setSpokenCount(0);
-  }, [sheet.name, randomEnabled]);
+    setSpokenCount(initialSpokenCount);
+  }, [sheet.name, randomEnabled, initialSpokenCount]);
 
   useEffect(() => {
     async function loadFavoriteState() {
@@ -258,6 +268,7 @@ export default function ReaderView({
 
   const isLast = currentIndex === displayRows.length - 1;
   const isReadyForNext = spokenCount >= repeatCount;
+  const shuffleImage = randomEnabled ? shuffleOnImage : shuffleOffImage;
   const replayActionImage = isReadyForNext ? goNextImage : replayImage;
   const replayActionLabel = isReadyForNext ? "Go next" : "Replay";
   const statSheetName = isFavoritesSheet ? "Favorites" : sheet.name;
@@ -268,7 +279,7 @@ export default function ReaderView({
     startActionCooldown();
 
     setCurrentIndex((prev) => prev - 1);
-    setSpokenCount(0);
+    setSpokenCount(initialSpokenCount);
   };
 
   const goNext = async () => {
@@ -278,7 +289,7 @@ export default function ReaderView({
     if (isLast) return;
 
     setCurrentIndex((prev) => prev + 1);
-    setSpokenCount(0);
+    setSpokenCount(initialSpokenCount);
 
     if (isLoggedIn && userId) {
       void Promise.all([
@@ -286,6 +297,11 @@ export default function ReaderView({
         recordCompletedTap(userId, statSheetName),
       ]).then(() => {
         void onStatsChanged?.();
+      });
+    } else {
+      onGuestStatsDelta?.({
+        totalNextCount: 1,
+        totalCompletedSentenceCount: 1,
       });
     }
   };
@@ -317,6 +333,11 @@ export default function ReaderView({
         recordCompletedTap(userId, statSheetName),
       ]).then(() => {
         void onStatsChanged?.();
+      });
+    } else {
+      onGuestStatsDelta?.({
+        totalReplayCount: 1,
+        totalCompletedSentenceCount: 1,
       });
     }
   };
@@ -418,12 +439,13 @@ export default function ReaderView({
             <div className="sentence-box-top">
               <div className="sentence-controls-left">
                 <button
-                  className="control-btn"
+                  className="control-btn reader-random-toggle-btn"
                   onClick={handleToggleRandom}
                   disabled={isFavoritesSheet}
                   type="button"
                 >
-                  {randomEnabled ? "🔀 Random On" : "➡️ Random Off"}
+                  <img src={shuffleImage} alt="" className="reader-random-toggle-icon" />
+                  {randomEnabled ? "On" : "Off"}
                 </button>
 
                 <button

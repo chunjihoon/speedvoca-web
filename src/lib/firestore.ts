@@ -34,6 +34,10 @@ export type UserStats = {
   totalReplayCount: number;
 };
 
+export type UserStatsDelta = Partial<
+  Record<"totalCompletedSentenceCount" | "totalNextCount" | "totalReplayCount", number>
+>;
+
 function chapterDocId(sheetName: string) {
   return encodeURIComponent(sheetName);
 }
@@ -122,7 +126,7 @@ async function bumpChapterStats(
 
 async function bumpUserStats(
   uid: string,
-  updates: Partial<Record<"totalCompletedSentenceCount" | "totalNextCount" | "totalReplayCount", number>>
+  updates: UserStatsDelta
 ) {
   const payload: Record<string, unknown> = {
     updatedAt: serverTimestamp(),
@@ -135,6 +139,10 @@ async function bumpUserStats(
   });
 
   await setDoc(doc(db, "users", uid), payload, { merge: true });
+}
+
+export async function applyUserStatsDelta(uid: string, updates: UserStatsDelta) {
+  await bumpUserStats(uid, updates);
 }
 
 export async function recordReplay(uid: string, sheetName: string) {
@@ -363,28 +371,32 @@ export async function loadUserStatsWithFallback(uid: string): Promise<UserStats>
     metaTotals.totalReplayCount += data.replayCount ?? 0;
   });
 
-  const shouldFallback =
-    rootStats.totalCompletedSentenceCount === 0 &&
-    rootStats.totalNextCount === 0 &&
-    rootStats.totalReplayCount === 0 &&
-    (metaTotals.totalCompletedSentenceCount > 0 ||
-      metaTotals.totalNextCount > 0 ||
-      metaTotals.totalReplayCount > 0);
+  const mergedStats: UserStats = {
+    totalCompletedSentenceCount: Math.max(
+      rootStats.totalCompletedSentenceCount,
+      metaTotals.totalCompletedSentenceCount
+    ),
+    totalNextCount: Math.max(rootStats.totalNextCount, metaTotals.totalNextCount),
+    totalReplayCount: Math.max(rootStats.totalReplayCount, metaTotals.totalReplayCount),
+  };
 
-  if (shouldFallback) {
+  const shouldHydrateRoot =
+    mergedStats.totalCompletedSentenceCount > rootStats.totalCompletedSentenceCount ||
+    mergedStats.totalNextCount > rootStats.totalNextCount ||
+    mergedStats.totalReplayCount > rootStats.totalReplayCount;
+
+  if (shouldHydrateRoot) {
     await setDoc(
       doc(db, "users", uid),
       {
-        totalCompletedSentenceCount: metaTotals.totalCompletedSentenceCount,
-        totalNextCount: metaTotals.totalNextCount,
-        totalReplayCount: metaTotals.totalReplayCount,
+        totalCompletedSentenceCount: mergedStats.totalCompletedSentenceCount,
+        totalNextCount: mergedStats.totalNextCount,
+        totalReplayCount: mergedStats.totalReplayCount,
         updatedAt: serverTimestamp(),
       },
       { merge: true }
     );
-
-    return metaTotals;
   }
 
-  return rootStats;
+  return mergedStats;
 }
