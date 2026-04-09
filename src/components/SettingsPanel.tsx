@@ -59,7 +59,7 @@ export default function SettingsPanel({
       <div className="settings-panel" onClick={(e) => e.stopPropagation()}>
         <div className="settings-header sangju-gotgam">
           <h3>{ui.settings.title}</h3>
-          <button className="control-btn" onClick={onClose}>
+          <button className="settings-close-btn" onClick={onClose} type="button">
             ✕
           </button>
         </div>

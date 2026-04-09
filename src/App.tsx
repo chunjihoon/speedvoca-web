@@ -52,6 +52,7 @@ import { auth } from "./lib/firebase";
 import myLearningIcon from "./assets/mylearning.png";
 import recommendIcon from "./assets/recommend.png";
 import importIcon from "./assets/import.png";
+import settingIcon from "./assets/setting.png";
 import {
   APP_LANGUAGE_STORAGE_KEY,
   FAVORITES_SHEET_NAME,
@@ -705,8 +706,11 @@ export default function App() {
         await navigator.share(sharePayload);
         return;
       }
-    } catch {
-      // Fallback bottom sheet handles cancelled/unsupported cases.
+    } catch (error) {
+      // User explicitly closed native share sheet; do not open fallback.
+      if (error instanceof DOMException && error.name === "AbortError") {
+        return;
+      }
     }
 
     setShareSheetOpen(true);
@@ -1034,7 +1038,7 @@ const handleDeleteChapter = async (sheet: SheetContent) => {
           aria-label={ui.app.settingsAria}
           type="button"
         >
-          ⚙
+          <img src={settingIcon} alt="" className="settings-icon-image" />
         </button>
       </div>
 

@@ -178,7 +178,8 @@ textarea::placeholder {
   object-fit: contain;
 }
 
-.settings-icon-btn {
+.settings-icon-btn,
+.settings-close-btn {
   width: 44px;
   height: 44px;
   border-radius: 999px;
@@ -192,12 +193,21 @@ textarea::placeholder {
   flex-shrink: 0;
 }
 
-.settings-icon-btn:hover {
+.settings-icon-btn:hover,
+.settings-close-btn:hover {
   background: rgba(103, 213, 95, 0.22);
 }
 
-.settings-icon-btn:active {
+.settings-icon-btn:active,
+.settings-close-btn:active {
   transform: translateY(1px);
+}
+
+.settings-icon-image {
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
+  display: block;
 }
 
 /* =========================
