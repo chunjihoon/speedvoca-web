@@ -142,11 +142,23 @@ export default function ReaderView({
   }, [sheet.rows, randomEnabled, isFavoritesSheet]);
 
   const current = useMemo(() => displayRows[currentIndex], [displayRows, currentIndex]);
+  const pendingTranslationPinnedSentenceRef = useRef<string | null>(null);
 
   useEffect(() => {
     setCurrentIndex(0);
     setSpokenCount(initialSpokenCount);
   }, [sheet.name, randomEnabled, initialSpokenCount]);
+
+  useEffect(() => {
+    const pinnedSentence = pendingTranslationPinnedSentenceRef.current;
+    if (!pinnedSentence || displayRows.length === 0) return;
+
+    const matchedIndex = displayRows.findIndex((row) => row.sentence === pinnedSentence);
+    pendingTranslationPinnedSentenceRef.current = null;
+    if (matchedIndex === -1 || matchedIndex === currentIndex) return;
+
+    setCurrentIndex(matchedIndex);
+  }, [displayRows, currentIndex]);
 
   useEffect(() => {
     async function loadFavoriteState() {
@@ -417,6 +429,11 @@ export default function ReaderView({
     await onStatsChanged?.();
   };
 
+  const handleTranslationLanguageClick = (lang: LanguageCode) => {
+    pendingTranslationPinnedSentenceRef.current = current.sentence;
+    onChangeTranslationLanguage?.(lang);
+  };
+
   return (
     <main className="page reader-page">
       <section className="reader-wrap reader-layout">
@@ -514,7 +531,7 @@ export default function ReaderView({
                     className={`language-flag-btn ${
                       translationLanguage === lang ? "active" : ""
                     }`}
-                    onClick={() => onChangeTranslationLanguage(lang)}
+                    onClick={() => handleTranslationLanguageClick(lang)}
                     aria-label={getLanguageLabel(lang, ui)}
                     title={getLanguageLabel(lang, ui)}
                   >

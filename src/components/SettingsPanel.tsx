@@ -61,13 +61,11 @@ export default function SettingsPanel({
           </button>
         </div>
 
-        <div className="settings-section">
+        <div className="settings-section settings-inline-row">
           <button className="control-btn" onClick={onToggleSound}>
             {soundEnabled ? ui.settings.soundOn : ui.settings.soundOff}
           </button>
-        </div>
 
-        <div className="settings-section">
           <label className="repeat-wrap">
             {ui.settings.repeat}
             <select
@@ -89,18 +87,18 @@ export default function SettingsPanel({
             <button
               className="control-btn"
               type="button"
-              onClick={() => onChangeLanguage("ko")}
-              disabled={appLanguage === "ko"}
-            >
-              {ui.settings.korean}
-            </button>
-            <button
-              className="control-btn"
-              type="button"
               onClick={() => onChangeLanguage("en")}
               disabled={appLanguage === "en"}
             >
               {ui.settings.english}
+            </button>
+            <button
+              className="control-btn"
+              type="button"
+              onClick={() => onChangeLanguage("ko")}
+              disabled={appLanguage === "ko"}
+            >
+              {ui.settings.korean}
             </button>
           </div>
         </div>
@@ -111,6 +109,7 @@ export default function SettingsPanel({
             <div>{ui.settings.next}: {totalNext}</div>
             <div>{ui.settings.replay}: {totalReplay}</div>
           </div>
+          <div className="settings-description">{ui.settings.studyStatsDescription}</div>
         </div>
 
         {isDeveloperAccount && (
@@ -138,12 +137,12 @@ export default function SettingsPanel({
 
         <div className="settings-section account-block">
           {isLoggedIn ? (
-            <>
+            <div className="account-row">
               <div className="user-chip">{userName}</div>
               <button className="control-btn" onClick={onLogout}>
                 {ui.settings.logout}
               </button>
-            </>
+            </div>
           ) : (
             <button className="control-btn" onClick={onLogin}>
               {ui.settings.loginGoogle}

@@ -190,8 +190,14 @@ export default function App() {
   const [loadedStatsUid, setLoadedStatsUid] = useState<string | null>(null);
   const [userDataLoading, setUserDataLoading] = useState(false);
 
-  const DEVELOPER_EMAILS = [import.meta.env.VITE_DEVELOPER_EMAILS];
-  const isDeveloperAccount = !!user?.email && DEVELOPER_EMAILS.includes(user.email);
+  const DEVELOPER_EMAILS = String(
+    import.meta.env.VITE_DEVELOPER_EMAILS ?? import.meta.env.VITE_DEVELOPER_EMAIL ?? ""
+  )
+    .split(",")
+    .map((email) => email.trim().toLowerCase())
+    .filter(Boolean);
+  const isDeveloperAccount =
+    !!user?.email && DEVELOPER_EMAILS.includes(user.email.trim().toLowerCase());
 
   const [developerModeEnabled, setDeveloperModeEnabled] = useState(() => {
     return localStorage.getItem("speedvoca_developer_mode") === "true";
@@ -217,6 +223,53 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem(APP_LANGUAGE_STORAGE_KEY, appLanguage);
   }, [appLanguage]);
+
+  useEffect(() => {
+    if (!settingsOpen) return;
+
+    const { body, documentElement } = document;
+    const scrollY = window.scrollY;
+
+    const prevBodyPosition = body.style.position;
+    const prevBodyTop = body.style.top;
+    const prevBodyLeft = body.style.left;
+    const prevBodyRight = body.style.right;
+    const prevBodyWidth = body.style.width;
+    const prevBodyOverflow = body.style.overflow;
+
+    body.classList.add("settings-open");
+    documentElement.classList.add("settings-open");
+
+    body.style.position = "fixed";
+    body.style.top = `-${scrollY}px`;
+    body.style.left = "0";
+    body.style.right = "0";
+    body.style.width = "100%";
+    body.style.overflow = "hidden";
+
+    const preventBackgroundTouchMove = (event: TouchEvent) => {
+      const target = event.target as Element | null;
+      if (target?.closest(".settings-panel")) return;
+      event.preventDefault();
+    };
+
+    document.addEventListener("touchmove", preventBackgroundTouchMove, { passive: false });
+
+    return () => {
+      document.removeEventListener("touchmove", preventBackgroundTouchMove);
+      body.classList.remove("settings-open");
+      documentElement.classList.remove("settings-open");
+
+      body.style.position = prevBodyPosition;
+      body.style.top = prevBodyTop;
+      body.style.left = prevBodyLeft;
+      body.style.right = prevBodyRight;
+      body.style.width = prevBodyWidth;
+      body.style.overflow = prevBodyOverflow;
+
+      window.scrollTo(0, scrollY);
+    };
+  }, [settingsOpen]);
 
   useEffect(() => {
     if (loginPromptOpen) return;

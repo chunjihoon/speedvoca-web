@@ -33,6 +33,7 @@ type UiText = {
     soundOff: string;
     repeat: string;
     studyStats: string;
+    studyStatsDescription: string;
     next: string;
     replay: string;
     language: string;
@@ -160,9 +161,10 @@ export const UI_TEXT: Record<AppLanguage, UiText> = {
       soundOff: "🔇 성우 꺼짐",
       repeat: "문장당 반복 횟수",
       studyStats: "학습 통계",
-      next: "다음",
-      replay: "리플레이",
-      language: "언어",
+      studyStatsDescription: "학습 중 버튼을 누른 누적 횟수입니다.",
+      next: "Next",
+      replay: "Replay",
+      language: "UI 표기 언어",
       korean: "한국어",
       english: "English",
       developer: "개발자",
@@ -313,9 +315,10 @@ export const UI_TEXT: Record<AppLanguage, UiText> = {
       soundOff: "🔇 Voice Off",
       repeat: "Repeat count",
       studyStats: "Study Stats",
+      studyStatsDescription: "These are cumulative counts of your button taps during study.",
       next: "Next",
       replay: "Replay",
-      language: "Language",
+      language: "UI Language",
       korean: "Korean",
       english: "English",
       developer: "Developer",
@@ -333,9 +336,9 @@ export const UI_TEXT: Record<AppLanguage, UiText> = {
       googleOnlyFootnote: "Currently, only Google social login is supported.",
       quickLoginTitle: "Login",
       quickLoginDescription: "Start right away with your Google account.",
-      moreSamplesTitle: "Login to access more samples",
+      moreSamplesTitle: "Login to access more contents",
       moreSamplesDescription:
-        "Right now, only the first sample is available. Login to unlock the rest.",
+        "Right now, only the first content is available. Login to unlock the rest.",
       importTitle: "Login to import study material",
       importDescription: "You need to login first to import and save Excel files.",
       manualSaveTitle: "Login to save study material",
