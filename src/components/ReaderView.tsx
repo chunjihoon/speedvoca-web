@@ -22,6 +22,7 @@ import {
 
 type Props = {
   sheet: SheetContent;
+  sheetSessionKey?: string;
   soundEnabled: boolean;
   repeatCount: number;
   voiceURI: string | null;
@@ -96,6 +97,7 @@ function getLanguageLabel(lang: LanguageCode, ui: AppUiText): string {
 
 export default function ReaderView({
   sheet,
+  sheetSessionKey,
   soundEnabled,
   repeatCount,
   voiceURI,
@@ -118,6 +120,7 @@ export default function ReaderView({
   onShare,
   ui,
 }: Props) {
+  const activeSheetSessionKey = sheetSessionKey ?? sheet.name;
   const initialSpokenCount = Math.min(1, Math.max(repeatCount, 1));
   const [currentIndex, setCurrentIndex] = useState(0);
   const [spokenCount, setSpokenCount] = useState(initialSpokenCount);
@@ -151,7 +154,7 @@ export default function ReaderView({
   useEffect(() => {
     setCurrentIndex(0);
     setSpokenCount(initialSpokenCount);
-  }, [sheet.name, randomEnabled, initialSpokenCount]);
+  }, [activeSheetSessionKey, randomEnabled, initialSpokenCount]);
 
   useEffect(() => {
     const pinnedSentence = pendingTranslationPinnedSentenceRef.current;
@@ -190,19 +193,19 @@ export default function ReaderView({
 
   useEffect(() => {
     if (!current) return;
-    if (initialEntrySpokenSheetRef.current === sheet.name) return;
-    initialEntrySpokenSheetRef.current = sheet.name;
+    if (initialEntrySpokenSheetRef.current === activeSheetSessionKey) return;
+    initialEntrySpokenSheetRef.current = activeSheetSessionKey;
     if (!soundEnabled) return;
 
     void speakText(current.sentence, true, 1, voiceURI, sheet.language).catch(() => {
       // Initial auto playback should fail silently.
     });
-  }, [sheet.name, current, soundEnabled, voiceURI, sheet.language]);
+  }, [activeSheetSessionKey, current, soundEnabled, voiceURI, sheet.language]);
 
   useEffect(() => {
     setRandomEnabled(chapterSettings?.randomEnabled ?? false);
     setFontScale(chapterSettings?.fontScale ?? 1);
-  }, [sheet.name, chapterSettings?.randomEnabled, chapterSettings?.fontScale]);
+  }, [activeSheetSessionKey, chapterSettings?.randomEnabled, chapterSettings?.fontScale]);
 
   const ACTION_COOLDOWN_MS = 2000;
   const [actionLocked, setActionLocked] = useState(false);
@@ -281,14 +284,27 @@ export default function ReaderView({
   const replayActionLabel = isReadyForNext ? ui.reader.goNextAria : ui.reader.replayAria;
   const statSheetName = isFavoritesSheet ? FAVORITES_SHEET_NAME : sheet.name;
   const favoriteTargetSheetName = current.sourceSheetName || sheet.name;
+  const playSentenceIfEnabled = (sentence: string) => {
+    if (!soundEnabled) return;
+    window.requestAnimationFrame(() => {
+      void speakText(sentence, true, 1, voiceURI, sheet.language).catch(() => {
+        // User action should not fail the flow when playback fails.
+      });
+    });
+  };
 
   const goPrev = () => {
     if (actionLocked || currentIndex === 0) return;
     startActionCooldown();
     stopSpeech();
+    const prevIndex = currentIndex - 1;
+    const prevRow = displayRows[prevIndex];
 
-    setCurrentIndex((prev) => prev - 1);
+    setCurrentIndex(prevIndex);
     setSpokenCount(initialSpokenCount);
+    if (prevRow) {
+      playSentenceIfEnabled(prevRow.sentence);
+    }
   };
 
   const goNext = async () => {
@@ -298,8 +314,14 @@ export default function ReaderView({
 
     if (isLast) return;
 
-    setCurrentIndex((prev) => prev + 1);
+    const nextIndex = currentIndex + 1;
+    const nextRow = displayRows[nextIndex];
+
+    setCurrentIndex(nextIndex);
     setSpokenCount(initialSpokenCount);
+    if (nextRow) {
+      playSentenceIfEnabled(nextRow.sentence);
+    }
 
     if (isLoggedIn && userId) {
       void Promise.all([

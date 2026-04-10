@@ -1346,6 +1346,7 @@ const handleDeleteChapter = async (sheet: SheetContent) => {
       {!loading && !authLoading && !error && activeDisplaySheet && (
         <ReaderView
           sheet={activeDisplaySheet}
+          sheetSessionKey={selectedRecommendedSession?.id ?? activeDisplaySheet.name}
           soundEnabled={soundEnabled}
           repeatCount={repeatCount}
           voiceURI={selectedVoiceMap[activeDisplaySheet.language] ?? null}
