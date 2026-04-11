@@ -37,6 +37,7 @@ export default function SheetList({
           const stats = statsMap[sheet.name] || {};
           const nextCount = stats.nextCount ?? 0;
           const replayCount = stats.replayCount ?? 0;
+          const canDelete = showDelete && sheet.name !== FAVORITES_SHEET_NAME;
           const displayTitle =
             sheet.name === FAVORITES_SHEET_NAME ? ui.common.favoritesLabel : sheet.name;
 
@@ -60,7 +61,7 @@ export default function SheetList({
                   </div>
 
                   <div className="sheet-card-actions">
-                    {showDelete && (
+                    {canDelete && (
                       <button
                         type="button"
                         className="sheet-card-delete-btn"

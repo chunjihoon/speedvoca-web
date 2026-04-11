@@ -6,6 +6,7 @@ export type SentenceRow = {
   sentence: string;
   translation: string;
   sourceSheetName?: string;
+  sourceLanguage?: ChapterLanguage;
 };
 
 export type SheetRow = SentenceRow;

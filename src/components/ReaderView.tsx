@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { flushSync } from "react-dom";
-import type { LanguageCode, SheetContent, TtsVoiceOption } from "../types/content";
+import type { ChapterLanguage, LanguageCode, SheetContent, TtsVoiceOption } from "../types/content";
 import { speakText, stopSpeech } from "../lib/tts";
 import { trackEvent } from "../lib/analytics";
 import goNextImage from "../assets/goNext.png";
@@ -13,7 +13,7 @@ import shareImage from "../assets/share.png";
 import { FAVORITES_SHEET_NAME, type AppUiText } from "../constants/i18n";
 
 import {
-  isFavorite,
+  isFavoriteByLanguage,
   recordCompletedTap,
   recordNext,
   recordReplay,
@@ -27,6 +27,7 @@ type Props = {
   soundEnabled: boolean;
   repeatCount: number;
   voiceURI: string | null;
+  voiceMap: Record<ChapterLanguage, string | null>;
   isLoggedIn: boolean;
   onRequireLogin: () => Promise<boolean>;
   userId?: string;
@@ -37,7 +38,7 @@ type Props = {
   };
   voices: TtsVoiceOption[];
   selectedVoiceURI: string | null;
-  onChangeVoice: (voiceURI: string) => void;
+  onChangeVoice: (voiceURI: string, languageOverride?: ChapterLanguage) => void;
   exitConfirmOpen: boolean;
   onRequestExit: () => void;
   onConfirmExit: () => void;
@@ -96,12 +97,22 @@ function getLanguageLabel(lang: LanguageCode, ui: AppUiText): string {
   }
 }
 
+function getRowStableKey(row: SheetContent["rows"][number]) {
+  return [
+    row.sourceSheetName ?? "",
+    row.sourceLanguage ?? "",
+    row.sentence,
+    row.translation,
+  ].join("::");
+}
+
 export default function ReaderView({
   sheet,
   sheetSessionKey,
   soundEnabled,
   repeatCount,
   voiceURI,
+  voiceMap,
   isLoggedIn,
   onRequireLogin,
   userId,
@@ -125,6 +136,8 @@ export default function ReaderView({
   const initialSpokenCount = Math.min(1, Math.max(repeatCount, 1));
   const [currentIndex, setCurrentIndex] = useState(0);
   const [spokenCount, setSpokenCount] = useState(initialSpokenCount);
+  const [lastSentenceConfirmOpen, setLastSentenceConfirmOpen] = useState(false);
+  const [favoriteRemoveConfirmOpen, setFavoriteRemoveConfirmOpen] = useState(false);
   const [randomEnabled, setRandomEnabled] = useState(chapterSettings?.randomEnabled ?? false);
   const [fontScale, setFontScale] = useState(chapterSettings?.fontScale ?? 1);
   const [favoriteActive, setFavoriteActive] = useState(false);
@@ -149,7 +162,7 @@ export default function ReaderView({
   }, [translationOptions, targetLanguageCode]);
 
   const displayRows = useMemo(() => {
-    if (isFavoritesSheet || !randomEnabled) return sheet.rows;
+    if (!randomEnabled) return sheet.rows;
 
     const copied = [...sheet.rows];
     for (let i = copied.length - 1; i > 0; i -= 1) {
@@ -157,10 +170,11 @@ export default function ReaderView({
       [copied[i], copied[j]] = [copied[j], copied[i]];
     }
     return copied;
-  }, [sheet.rows, randomEnabled, isFavoritesSheet]);
+  }, [sheet.rows, randomEnabled]);
 
   const current = useMemo(() => displayRows[currentIndex], [displayRows, currentIndex]);
   const pendingTranslationPinnedSentenceRef = useRef<string | null>(null);
+  const pendingRowPinnedKeyRef = useRef<string | null>(null);
   const initialEntrySpokenSheetRef = useRef<string | null>(null);
   const trackReaderEvent = (
     name: string,
@@ -227,6 +241,23 @@ export default function ReaderView({
   }, [displayRows, currentIndex]);
 
   useEffect(() => {
+    const pinnedRowKey = pendingRowPinnedKeyRef.current;
+    if (!pinnedRowKey || displayRows.length === 0) return;
+
+    const matchedIndex = displayRows.findIndex((row) => getRowStableKey(row) === pinnedRowKey);
+    pendingRowPinnedKeyRef.current = null;
+
+    if (matchedIndex >= 0) {
+      setCurrentIndex(matchedIndex);
+      setSpokenCount(initialSpokenCount);
+      return;
+    }
+
+    setCurrentIndex((prev) => Math.min(prev, displayRows.length - 1));
+    setSpokenCount(initialSpokenCount);
+  }, [displayRows, initialSpokenCount]);
+
+  useEffect(() => {
     async function loadFavoriteState() {
       if (!current) {
         setFavoriteActive(false);
@@ -243,12 +274,17 @@ export default function ReaderView({
         return;
       }
 
-      const exists = await isFavorite(userId, sheet.name, current.sentence);
+      const exists = await isFavoriteByLanguage(
+        userId,
+        sheet.name,
+        current.sourceLanguage ?? sheet.language,
+        current.sentence
+      );
       setFavoriteActive(exists);
     }
 
     void loadFavoriteState();
-  }, [isLoggedIn, userId, sheet.name, current?.sentence, current, isFavoritesSheet]);
+  }, [isLoggedIn, userId, sheet.name, current?.sentence, current, isFavoritesSheet, sheet.language]);
 
   useEffect(() => {
     if (!current) return;
@@ -256,10 +292,12 @@ export default function ReaderView({
     initialEntrySpokenSheetRef.current = activeSheetSessionKey;
     if (!soundEnabled) return;
 
-    void speakText(current.sentence, true, 1, voiceURI, sheet.language).catch(() => {
+    const currentLanguage = current.sourceLanguage ?? sheet.language;
+    const currentVoice = isFavoritesSheet ? voiceMap[currentLanguage] ?? null : voiceURI;
+    void speakText(current.sentence, true, 1, currentVoice, currentLanguage).catch(() => {
       // Initial auto playback should fail silently.
     });
-  }, [activeSheetSessionKey, current, soundEnabled, voiceURI, sheet.language]);
+  }, [activeSheetSessionKey, current, soundEnabled, voiceURI, sheet.language, isFavoritesSheet, voiceMap]);
 
   useEffect(() => {
     setRandomEnabled(chapterSettings?.randomEnabled ?? false);
@@ -343,10 +381,17 @@ export default function ReaderView({
   const replayActionLabel = isReadyForNext ? ui.reader.goNextAria : ui.reader.replayAria;
   const statSheetName = isFavoritesSheet ? FAVORITES_SHEET_NAME : sheet.name;
   const favoriteTargetSheetName = current.sourceSheetName || sheet.name;
+  const currentRowLanguage = current.sourceLanguage ?? sheet.language;
+  const currentVoiceURI = isFavoritesSheet
+    ? voiceMap[currentRowLanguage] ?? null
+    : voiceURI;
+  const selectableVoices = isFavoritesSheet
+    ? voices.filter((voice) => voice.lang === currentRowLanguage)
+    : voices;
   const playSentenceIfEnabled = (sentence: string) => {
     if (!soundEnabled) return;
     window.requestAnimationFrame(() => {
-      void speakText(sentence, true, 1, voiceURI, sheet.language).catch(() => {
+      void speakText(sentence, true, 1, currentVoiceURI, currentRowLanguage).catch(() => {
         // User action should not fail the flow when playback fails.
       });
     });
@@ -407,6 +452,11 @@ export default function ReaderView({
   };
 
   const handleReplayAction = async () => {
+    if (isReadyForNext && isLast) {
+      setLastSentenceConfirmOpen(true);
+      return;
+    }
+
     if (isReadyForNext) {
       await goNext("next");
       return;
@@ -421,7 +471,7 @@ export default function ReaderView({
 
     if (soundEnabled) {
       window.requestAnimationFrame(() => {
-        void speakText(current.sentence, true, 1, voiceURI, sheet.language).catch(() => {
+        void speakText(current.sentence, true, 1, currentVoiceURI, currentRowLanguage).catch(() => {
           // Keep count progression based on user taps even if playback fails.
         });
       });
@@ -444,18 +494,34 @@ export default function ReaderView({
     trackReaderEvent("reader_action_replay");
   };
 
-  const handleFavorite = async () => {
+  const executeFavoriteToggle = async () => {
     if (!isLoggedIn || !userId) {
       await onRequireLogin();
       return;
     }
 
+    let fallbackPinnedRowKey: string | null = null;
+    if (isFavoritesSheet) {
+      const nextCandidate = displayRows[currentIndex + 1];
+      const prevCandidate = displayRows[currentIndex - 1];
+      fallbackPinnedRowKey = nextCandidate
+        ? getRowStableKey(nextCandidate)
+        : prevCandidate
+          ? getRowStableKey(prevCandidate)
+          : null;
+    }
+
     const result = await toggleFavorite({
       uid: userId,
       sheetName: favoriteTargetSheetName,
+      language: current.sourceLanguage ?? sheet.language,
       sentence: current.sentence,
       translation: current.translation,
     });
+
+    if (isFavoritesSheet && !result.active) {
+      pendingRowPinnedKeyRef.current = fallbackPinnedRowKey;
+    }
 
     await onStatsChanged?.();
     sessionCountsRef.current.favoriteToggle += 1;
@@ -463,13 +529,9 @@ export default function ReaderView({
 
     if (isFavoritesSheet) {
       if (!result.active) {
-        if (displayRows.length === 1) {
+        if (!fallbackPinnedRowKey) {
           onRequestExit();
           return;
-        }
-
-        if (currentIndex >= displayRows.length - 1) {
-          setCurrentIndex((prev) => Math.max(0, prev - 1));
         }
       }
       return;
@@ -478,9 +540,15 @@ export default function ReaderView({
     setFavoriteActive(result.active);
   };
 
-  const handleToggleRandom = async () => {
-    if (isFavoritesSheet) return;
+  const handleFavorite = async () => {
+    if (isFavoritesSheet && favoriteActive) {
+      setFavoriteRemoveConfirmOpen(true);
+      return;
+    }
+    await executeFavoriteToggle();
+  };
 
+  const handleToggleRandom = async () => {
     if (!isLoggedIn || !userId) {
       await onRequireLogin();
       return;
@@ -533,7 +601,7 @@ export default function ReaderView({
 
   const handleVoiceChange = (nextVoiceUri: string) => {
     trackReaderEvent("reader_change_voice");
-    onChangeVoice(nextVoiceUri);
+    onChangeVoice(nextVoiceUri, isFavoritesSheet ? currentRowLanguage : undefined);
   };
 
   return (
@@ -565,7 +633,6 @@ export default function ReaderView({
                 <button
                   className="control-btn reader-random-toggle-btn"
                   onClick={handleToggleRandom}
-                  disabled={isFavoritesSheet}
                   type="button"
                 >
                   <img src={shuffleImage} alt="" className="reader-random-toggle-icon" />
@@ -574,10 +641,10 @@ export default function ReaderView({
 
                 <select
                   className="control-btn reader-inline-select"
-                  value={selectedVoiceURI ?? ""}
+                  value={isFavoritesSheet ? voiceMap[currentRowLanguage] ?? "" : selectedVoiceURI ?? ""}
                   onChange={(e) => handleVoiceChange(e.target.value)}
                 >
-                  {voices.map((voice) => (
+                  {selectableVoices.map((voice) => (
                     <option key={voice.voiceURI} value={voice.voiceURI}>
                       {voice.name}
                     </option>
@@ -684,7 +751,7 @@ export default function ReaderView({
             <button
               className={`icon-action-btn main-action-btn ${actionLocked ? "cooldown" : ""}`}
               onClick={handleReplayAction}
-              disabled={actionLocked || (isReadyForNext && isLast)}
+              disabled={actionLocked}
               aria-label={replayActionLabel}
               type="button"
             >
@@ -740,6 +807,52 @@ export default function ReaderView({
               </button>
               <button className="primary-btn" onClick={onConfirmExit}>
                 {ui.common.exit}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {lastSentenceConfirmOpen && (
+        <div className="confirm-overlay" onClick={() => setLastSentenceConfirmOpen(false)}>
+          <div className="confirm-modal" onClick={(e) => e.stopPropagation()}>
+            <h3 className="sangju-gotgam">{ui.reader.lastSentenceTitle}</h3>
+            <p>{ui.reader.lastSentenceDescription}</p>
+            <div className="confirm-actions">
+              <button className="secondary-btn" onClick={() => setLastSentenceConfirmOpen(false)}>
+                {ui.common.cancel}
+              </button>
+              <button
+                className="primary-btn"
+                onClick={() => {
+                  setLastSentenceConfirmOpen(false);
+                  onConfirmExit();
+                }}
+              >
+                {ui.reader.goHome}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {favoriteRemoveConfirmOpen && (
+        <div className="confirm-overlay" onClick={() => setFavoriteRemoveConfirmOpen(false)}>
+          <div className="confirm-modal" onClick={(e) => e.stopPropagation()}>
+            <h3 className="sangju-gotgam">{ui.reader.favoriteRemoveTitle}</h3>
+            <p>{ui.reader.favoriteRemoveDescription}</p>
+            <div className="confirm-actions">
+              <button className="secondary-btn" onClick={() => setFavoriteRemoveConfirmOpen(false)}>
+                {ui.common.cancel}
+              </button>
+              <button
+                className="primary-btn"
+                onClick={() => {
+                  setFavoriteRemoveConfirmOpen(false);
+                  void executeFavoriteToggle();
+                }}
+              >
+                {ui.reader.favoriteRemoveConfirm}
               </button>
             </div>
           </div>

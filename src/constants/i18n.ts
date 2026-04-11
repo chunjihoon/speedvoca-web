@@ -132,6 +132,12 @@ type UiText = {
     emptySentence: string;
     exitTitle: string;
     exitDescription: string;
+    favoriteRemoveTitle: string;
+    favoriteRemoveDescription: string;
+    favoriteRemoveConfirm: string;
+    lastSentenceTitle: string;
+    lastSentenceDescription: string;
+    goHome: string;
     randomOn: string;
     randomOff: string;
     backAria: string;
@@ -289,6 +295,12 @@ export const UI_TEXT: Record<AppLanguage, UiText> = {
       emptySentence: "학습할 문장이 없습니다.",
       exitTitle: "학습을 종료하시겠습니까?",
       exitDescription: "지금 나가면 현재 학습 화면이 종료됩니다.",
+      favoriteRemoveTitle: "즐겨찾기에서 제거할까요?",
+      favoriteRemoveDescription: "이 문장을 즐겨찾기 목록에서 제거합니다.",
+      favoriteRemoveConfirm: "제거하기",
+      lastSentenceTitle: "마지막 문장입니다.",
+      lastSentenceDescription: "다른 학습 세트를 공부하러 메인화면으로 갈까요?",
+      goHome: "메인으로 가기",
       randomOn: "켜짐",
       randomOff: "꺼짐",
       backAria: "뒤로 가기",
@@ -465,6 +477,12 @@ export const UI_TEXT: Record<AppLanguage, UiText> = {
       emptySentence: "There are no sentences to study.",
       exitTitle: "Do you want to end this study session?",
       exitDescription: "If you leave now, the current study screen will close.",
+      favoriteRemoveTitle: "Remove from favorites?",
+      favoriteRemoveDescription: "This sentence will be removed from your favorites list.",
+      favoriteRemoveConfirm: "Remove",
+      lastSentenceTitle: "This is the last sentence.",
+      lastSentenceDescription: "Would you like to go to the home screen and study another set?",
+      goHome: "Go Home",
       randomOn: "On",
       randomOff: "Off",
       backAria: "Back",

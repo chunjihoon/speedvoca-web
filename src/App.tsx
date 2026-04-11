@@ -215,7 +215,9 @@ export default function App() {
   const [guestPendingStats, setGuestPendingStats] = useState<TotalStats>(() =>
     loadGuestPendingStats()
   );
-  const [favoriteRows, setFavoriteRows] = useState<{ sentence: string; translation: string; sourceSheetName: string }[]>([]);
+  const [favoriteRows, setFavoriteRows] = useState<
+    { sentence: string; translation: string; sourceSheetName: string; sourceLanguage: ChapterLanguage }[]
+  >([]);
   const [importedSheets, setImportedSheets] = useState<SheetContent[]>([]);
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -577,6 +579,7 @@ export default function App() {
           sentence: item.sentence,
           translation: item.translation,
           sourceSheetName: item.sheetName,
+          sourceLanguage: item.language ?? "en-US",
         }))
       );
       setImportedSheets(
@@ -674,6 +677,7 @@ export default function App() {
           sentence: row.sentence,
           translation: row.translation,
           sourceSheetName: row.sourceSheetName,
+          sourceLanguage: row.sourceLanguage,
         })),
       });
     }
@@ -701,6 +705,7 @@ export default function App() {
           sentence: row.sentence,
           translation: row.translation,
           sourceSheetName: row.sourceSheetName,
+          sourceLanguage: row.sourceLanguage,
         })),
       };
     }
@@ -757,6 +762,42 @@ export default function App() {
   
     return selectedSheet;
   }, [selectedRecommendedSession, selectedSheet]);
+
+  useEffect(() => {
+    setSelectedSheet((prev) => {
+      if (!prev || prev.name !== FAVORITES_SHEET_NAME) return prev;
+
+      const nextRows = favoriteRows.map((row) => ({
+        sentence: row.sentence,
+        translation: row.translation,
+        sourceSheetName: row.sourceSheetName,
+        sourceLanguage: row.sourceLanguage,
+      }));
+
+      if (prev.rows.length === nextRows.length) {
+        let same = true;
+        for (let i = 0; i < prev.rows.length; i += 1) {
+          const a = prev.rows[i];
+          const b = nextRows[i];
+          if (
+            a.sentence !== b.sentence ||
+            a.translation !== b.translation ||
+            a.sourceSheetName !== b.sourceSheetName ||
+            a.sourceLanguage !== b.sourceLanguage
+          ) {
+            same = false;
+            break;
+          }
+        }
+        if (same) return prev;
+      }
+
+      return {
+        ...prev,
+        rows: nextRows,
+      };
+    });
+  }, [favoriteRows]);
 
   /** 레벨업 관련 */
   const [showLevelUpEffect, setShowLevelUpEffect] = useState(false);
@@ -990,12 +1031,13 @@ export default function App() {
     setExitConfirmOpen(false);
   };
 
-  const handleChangeVoice = (voiceURI: string) => {
+  const handleChangeVoice = (voiceURI: string, languageOverride?: ChapterLanguage) => {
     if (!activeDisplaySheet) return;
+    const targetLanguage = languageOverride ?? activeDisplaySheet.language;
   
     const next: VoiceMap = {
       ...selectedVoiceMap,
-      [activeDisplaySheet.language]: voiceURI,
+      [targetLanguage]: voiceURI,
     };
   
     setSelectedVoiceMap(next);
@@ -1698,7 +1740,12 @@ const handleDeleteChapter = async (sheet: SheetContent) => {
           soundEnabled={soundEnabled}
           repeatCount={repeatCount}
           voiceURI={selectedVoiceMap[activeDisplaySheet.language] ?? null}
-          voices={voices.filter((voice) => voice.lang === activeDisplaySheet.language)}
+          voiceMap={selectedVoiceMap}
+          voices={
+            activeDisplaySheet.name === FAVORITES_SHEET_NAME
+              ? voices
+              : voices.filter((voice) => voice.lang === activeDisplaySheet.language)
+          }
           selectedVoiceURI={selectedVoiceMap[activeDisplaySheet.language] ?? null}
           onChangeVoice={handleChangeVoice}
           isLoggedIn={!!user}

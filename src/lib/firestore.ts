@@ -24,6 +24,7 @@ export type ChapterMeta = {
 
 export type FavoriteItem = {
   sheetName: string;
+  language?: ChapterLanguage;
   sentence: string;
   translation: string;
   createdAt?: unknown;
@@ -43,8 +44,12 @@ function chapterDocId(sheetName: string) {
   return encodeURIComponent(sheetName);
 }
 
-function favoriteDocId(sheetName: string, sentence: string) {
+function favoriteDocIdLegacy(sheetName: string, sentence: string) {
   return encodeURIComponent(`${sheetName}__${sentence}`);
+}
+
+function favoriteDocId(sheetName: string, language: ChapterLanguage, sentence: string) {
+  return encodeURIComponent(`${sheetName}__${language}__${sentence}`);
 }
 
 export async function ensureUserProfile(params: {
@@ -181,17 +186,20 @@ export async function loadUserStats(uid: string): Promise<UserStats> {
 export async function toggleFavorite(params: {
   uid: string;
   sheetName: string;
+  language: ChapterLanguage;
   sentence: string;
   translation: string;
 }) {
-  const { uid, sheetName, sentence, translation } = params;
-  const id = favoriteDocId(sheetName, sentence);
+  const { uid, sheetName, language, sentence, translation } = params;
+  const id = favoriteDocId(sheetName, language, sentence);
   const ref = doc(db, "users", uid, "favorites", id);
-  const snap = await getDoc(ref);
+  const legacyRef = doc(db, "users", uid, "favorites", favoriteDocIdLegacy(sheetName, sentence));
+  const [snap, legacySnap] = await Promise.all([getDoc(ref), getDoc(legacyRef)]);
 
-  if (snap.exists()) {
+  if (snap.exists() || legacySnap.exists()) {
     await Promise.all([
-      deleteDoc(ref),
+      snap.exists() ? deleteDoc(ref) : Promise.resolve(),
+      legacySnap.exists() ? deleteDoc(legacyRef) : Promise.resolve(),
       bumpChapterStats(uid, sheetName, { favoriteCount: -1 }),
     ]);
     return { active: false };
@@ -200,6 +208,7 @@ export async function toggleFavorite(params: {
   await Promise.all([
     setDoc(ref, {
       sheetName,
+      language,
       sentence,
       translation,
       createdAt: serverTimestamp(),
@@ -219,6 +228,7 @@ export async function loadFavorites(uid: string): Promise<FavoriteItem[]> {
     if (data.sentence?.trim()) {
       items.push({
         sheetName: data.sheetName,
+        language: data.language ?? "en-US",
         sentence: data.sentence,
         translation: data.translation ?? "",
         createdAt: data.createdAt,
@@ -230,9 +240,24 @@ export async function loadFavorites(uid: string): Promise<FavoriteItem[]> {
 }
 
 export async function isFavorite(uid: string, sheetName: string, sentence: string) {
-  const id = favoriteDocId(sheetName, sentence);
-  const snap = await getDoc(doc(db, "users", uid, "favorites", id));
-  return snap.exists();
+  const legacySnap = await getDoc(
+    doc(db, "users", uid, "favorites", favoriteDocIdLegacy(sheetName, sentence))
+  );
+  return legacySnap.exists();
+}
+
+export async function isFavoriteByLanguage(
+  uid: string,
+  sheetName: string,
+  language: ChapterLanguage,
+  sentence: string
+) {
+  const id = favoriteDocId(sheetName, language, sentence);
+  const [snap, legacySnap] = await Promise.all([
+    getDoc(doc(db, "users", uid, "favorites", id)),
+    getDoc(doc(db, "users", uid, "favorites", favoriteDocIdLegacy(sheetName, sentence))),
+  ]);
+  return snap.exists() || legacySnap.exists();
 }
 
 export type ImportedChapter = {
