@@ -1374,14 +1374,26 @@ const handleDeleteChapter = async (sheet: SheetContent) => {
           />
         </div>
 
-        <button
-          className="settings-icon-btn"
-          onClick={handleOpenSettings}
-          aria-label={ui.app.settingsAria}
-          type="button"
-        >
-          <img src={settingIcon} alt="" className="settings-icon-image" />
-        </button>
+        <div className="topbar-right">
+          <button
+            className={`topbar-language-toggle ${appLanguage === "en" ? "is-en" : "is-ko"}`}
+            type="button"
+            onClick={() => handleChangeAppLanguage(appLanguage === "ko" ? "en" : "ko")}
+            aria-label={appLanguage === "ko" ? "Switch to English" : "한국어로 전환"}
+          >
+            <span className="topbar-language-thumb" aria-hidden="true" />
+            <span className="topbar-language-label topbar-language-label-ko">KO</span>
+            <span className="topbar-language-label topbar-language-label-en">EN</span>
+          </button>
+          <button
+            className="settings-icon-btn"
+            onClick={handleOpenSettings}
+            aria-label={ui.app.settingsAria}
+            type="button"
+          >
+            <img src={settingIcon} alt="" className="settings-icon-image" />
+          </button>
+        </div>
       </div>
 
       {!loading && !authLoading && !error && isStatsReady && (
