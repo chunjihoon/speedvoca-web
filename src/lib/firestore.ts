@@ -338,6 +338,16 @@ export async function saveImportedChapterWithDailyLimit(params: {
   });
 }
 
+export async function loadManualImportDailyRemaining(uid: string, dailyLimit: number) {
+  const dateKey = getLocalDateKey();
+  const usageRef = doc(db, "users", uid, "manualImportUsage", dateKey);
+  const usageSnap = await getDoc(usageRef);
+  const currentCount = usageSnap.exists()
+    ? Math.max(0, Number((usageSnap.data() as { count?: number }).count ?? 0))
+    : 0;
+  return Math.max(0, dailyLimit - currentCount);
+}
+
 export async function loadImportedChapters(uid: string): Promise<ImportedChapter[]> {
   const snap = await getDocs(collection(db, "users", uid, "importedChapters"));
   const items: ImportedChapter[] = [];

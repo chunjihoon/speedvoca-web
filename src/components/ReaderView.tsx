@@ -319,7 +319,7 @@ export default function ReaderView({
         {exitConfirmOpen && (
           <div className="confirm-overlay" onClick={onCancelExit}>
             <div className="confirm-modal" onClick={(e) => e.stopPropagation()}>
-              <h3>{ui.reader.exitTitle}</h3>
+              <h3 className="sangju-gotgam">{ui.reader.exitTitle}</h3>
               <p>{ui.reader.exitDescription}</p>
               <div className="confirm-actions">
                 <button className="secondary-btn" onClick={onCancelExit}>
@@ -732,7 +732,7 @@ export default function ReaderView({
       {exitConfirmOpen && (
         <div className="confirm-overlay" onClick={onCancelExit}>
           <div className="confirm-modal" onClick={(e) => e.stopPropagation()}>
-            <h3>{ui.reader.exitTitle}</h3>
+            <h3 className="sangju-gotgam">{ui.reader.exitTitle}</h3>
             <p>{ui.reader.exitDescription}</p>
             <div className="confirm-actions">
               <button className="secondary-btn" onClick={onCancelExit}>

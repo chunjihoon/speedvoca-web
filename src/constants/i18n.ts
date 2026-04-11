@@ -33,6 +33,7 @@ type UiText = {
     soundOn: string;
     soundOff: string;
     repeat: string;
+    dailyNewSentenceRemaining: string;
     studyStats: string;
     studyStatsDescription: string;
     next: string;
@@ -125,6 +126,7 @@ type UiText = {
     manualPolicyMaxChars: (lineText: string) => string;
     manualPolicyDailyLimit: string;
     manualPolicyDailyRemaining: (remaining: number) => string;
+    manualLanguageMismatch: (line: number, detected: string, selected: string) => string;
   };
   reader: {
     emptySentence: string;
@@ -174,6 +176,7 @@ export const UI_TEXT: Record<AppLanguage, UiText> = {
       soundOn: "🔊 성우 켜짐",
       soundOff: "🔇 성우 꺼짐",
       repeat: "문장당 반복 횟수",
+      dailyNewSentenceRemaining: "일일 생성 신규 잔여 문장 수",
       studyStats: "학습 통계",
       studyStatsDescription: "학습 중 버튼을 누른 누적 횟수입니다.",
       next: "Next",
@@ -278,7 +281,9 @@ export const UI_TEXT: Record<AppLanguage, UiText> = {
       manualPolicyDailyLimit:
         "정책에 의해 지금은 하루 최대 60문장을 초과 생성할 수 없습니다. PRO 플랜은 5월 오픈 예정입니다.",
       manualPolicyDailyRemaining: (remaining) =>
-        `일일 신규 생성 문장 수 60개 중 ${remaining}개 남음`,
+        `일일 신규 생성 잔여 문장 수: ${remaining}개/60개`,
+      manualLanguageMismatch: (line, detected, selected) =>
+        `${line}행 원문 기준 감지 언어(${detected})와 선택 언어(${selected})가 일치하지 않습니다.\n앞 10행의 언어를 확인한 뒤 다시 저장해주세요.`,
     },
     reader: {
       emptySentence: "학습할 문장이 없습니다.",
@@ -345,6 +350,7 @@ export const UI_TEXT: Record<AppLanguage, UiText> = {
       soundOn: "🔊 Voice On",
       soundOff: "🔇 Voice Off",
       repeat: "Repeat count",
+      dailyNewSentenceRemaining: "Daily new sentence remaining",
       studyStats: "Study Stats",
       studyStatsDescription: "These are cumulative counts of your button taps during study.",
       next: "Next",
@@ -451,7 +457,9 @@ export const UI_TEXT: Record<AppLanguage, UiText> = {
       manualPolicyDailyLimit:
         "By policy, you can currently create up to 60 sentences per day. Pro plan opens in May.",
       manualPolicyDailyRemaining: (remaining) =>
-        `${remaining} out of 60 daily new sentence slots remaining`,
+        `Remaining daily new sentence slots: ${remaining}/60`,
+      manualLanguageMismatch: (line, detected, selected) =>
+        `The detected language from line ${line} (${detected}) does not match the selected language (${selected}).\nPlease review the first 10 lines and try again.`,
     },
     reader: {
       emptySentence: "There are no sentences to study.",

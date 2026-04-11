@@ -18,6 +18,8 @@ type Props = {
   onShare: () => void;
   totalNext: number;
   totalReplay: number;
+  dailySentenceRemaining: number;
+  dailySentenceLimit: number;
   isDeveloperAccount: boolean;
   developerModeEnabled: boolean;
   onToggleDeveloperMode: () => void;
@@ -44,6 +46,8 @@ export default function SettingsPanel({
   onShare,
   totalNext,
   totalReplay,
+  dailySentenceRemaining,
+  dailySentenceLimit,
   isDeveloperAccount,
   developerModeEnabled,
   onToggleDeveloperMode,
@@ -69,7 +73,7 @@ export default function SettingsPanel({
         onTouchStart={(e) => e.stopPropagation()}
       >
         <div className="settings-header sangju-gotgam">
-          <h3>{ui.settings.title}</h3>
+          <h3 className="sangju-gotgam">{ui.settings.title}</h3>
           <button className="settings-close-btn" onClick={onClose} type="button">
             ✕
           </button>
@@ -114,6 +118,17 @@ export default function SettingsPanel({
             >
               {ui.settings.korean}
             </button>
+          </div>
+        </div>
+
+        <div className="settings-section">
+          <div className="settings-subtitle">
+            {ui.settings.dailyNewSentenceRemaining}
+          </div>
+          <div className="settings-stats">
+            <div>
+              {dailySentenceRemaining}/{dailySentenceLimit}
+            </div>
           </div>
         </div>
 

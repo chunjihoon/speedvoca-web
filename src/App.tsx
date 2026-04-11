@@ -30,6 +30,7 @@ import {
   applyUserStatsDelta,
   loadFavorites,
   loadImportedChapters,
+  loadManualImportDailyRemaining,
   loadUserChapterMeta,
   //loadUserStats,
   loadUserStatsWithFallback,
@@ -60,6 +61,7 @@ import {
   FAVORITES_SHEET_NAME,
   UI_TEXT,
   type AppLanguage,
+  type AppUiText,
 } from "./constants/i18n";
 
 type TargetLanguageCode = Exclude<LanguageCode, "ja">;
@@ -146,6 +148,42 @@ function getFallbackTranslationLanguage(target: TargetLanguageCode): LanguageCod
   return target === "ko" ? "en" : "ko";
 }
 
+function inferLanguageFromSentence(text: string): ChapterLanguage | null {
+  const value = text.trim();
+  if (!value) return null;
+
+  if (/[ㄱ-ㅎㅏ-ㅣ가-힣]/.test(value)) return "ko-KR";
+  if (/[\u4E00-\u9FFF]/.test(value)) return "cmn-CN";
+
+  if (/[A-Za-zÀ-ÖØ-öø-ÿ]/.test(value)) {
+    const frenchHint =
+      /[àâçéèêëîïôûùüÿœæ]/i.test(value) ||
+      /\b(je|tu|il|elle|nous|vous|ils|elles|le|la|les|un|une|des|du|de|est|suis|pas|bonjour|merci)\b/i.test(
+        value
+      );
+
+    if (frenchHint) return "fr-FR";
+    return "en-US";
+  }
+
+  return null;
+}
+
+function getManualLanguageLabel(ui: AppUiText, language: ChapterLanguage): string {
+  switch (language) {
+    case "en-US":
+      return ui.reader.languageName.en;
+    case "fr-FR":
+      return ui.reader.languageName.fr;
+    case "cmn-CN":
+      return ui.reader.languageName.zh;
+    case "ko-KR":
+      return ui.reader.languageName.ko;
+    default:
+      return language;
+  }
+}
+
 
 
 export default function App() {
@@ -182,6 +220,7 @@ export default function App() {
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const openSettingsTimerRef = useRef<number | null>(null);
+  const myLearningTitleRef = useRef<HTMLSpanElement | null>(null);
   const manualImportSectionRef = useRef<HTMLDivElement | null>(null);
   const manualImportTitleRef = useRef<HTMLSpanElement | null>(null);
 
@@ -190,6 +229,7 @@ export default function App() {
   const [shareSheetOpen, setShareSheetOpen] = useState(false);
   const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false);
   const [importNoticeMessage, setImportNoticeMessage] = useState<string | null>(null);
+  const [importNoticeFocusMyLearning, setImportNoticeFocusMyLearning] = useState(false);
   //const [loginModalOpen, setLoginModalOpen] = useState(false);
   const [loginPromptOpen, setLoginPromptOpen] = useState(false);
   const [loginPromptTitle, setLoginPromptTitle] = useState(ui.loginPrompt.requiredTitle);
@@ -197,13 +237,44 @@ export default function App() {
     ui.loginPrompt.requiredDescription
   );
 
-  const showImportNotice = (message: string) => {
+  const showImportNotice = (
+    message: string,
+    options?: { focusMyLearningAfterClose?: boolean }
+  ) => {
     setImportNoticeMessage(message);
+    setImportNoticeFocusMyLearning(Boolean(options?.focusMyLearningAfterClose));
+  };
+
+  const closeImportNotice = () => {
+    const shouldFocus = importNoticeFocusMyLearning;
+    setImportNoticeMessage(null);
+    setImportNoticeFocusMyLearning(false);
+
+    if (!shouldFocus) return;
+    requestAnimationFrame(() => {
+      const topbarEl = document.querySelector(".topbar.simple-topbar") as HTMLElement | null;
+      const stickyOffset = topbarEl ? topbarEl.getBoundingClientRect().height : 0;
+
+      if (myLearningTitleRef.current) {
+        const top =
+          window.scrollY +
+          myLearningTitleRef.current.getBoundingClientRect().top -
+          stickyOffset -
+          16;
+        window.scrollTo({
+          top: Math.max(0, top),
+          behavior: "smooth",
+        });
+      }
+    });
   };
 
   const [manualTitle, setManualTitle] = useState("");
   const [manualContent, setManualContent] = useState("");
   const [manualImportLoading, setManualImportLoading] = useState(false);
+  const [dailySentenceRemaining, setDailySentenceRemaining] = useState(
+    MANUAL_IMPORT_DAILY_SENTENCE_LIMIT
+  );
 
   const [loadedStatsUid, setLoadedStatsUid] = useState<string | null>(null);
   const [userDataLoading, setUserDataLoading] = useState(false);
@@ -231,6 +302,22 @@ export default function App() {
     Record<string, MultilingualRemoteSheetContent>
   >({});
   const [loadingRecommendedId, setLoadingRecommendedId] = useState<string | null>(null);
+
+  const refreshDailySentenceRemaining = async (targetUid?: string | null) => {
+    if (!targetUid) {
+      setDailySentenceRemaining(MANUAL_IMPORT_DAILY_SENTENCE_LIMIT);
+      return;
+    }
+    try {
+      const remaining = await loadManualImportDailyRemaining(
+        targetUid,
+        MANUAL_IMPORT_DAILY_SENTENCE_LIMIT
+      );
+      setDailySentenceRemaining(remaining);
+    } catch {
+      setDailySentenceRemaining(MANUAL_IMPORT_DAILY_SENTENCE_LIMIT);
+    }
+  };
 
   
 
@@ -512,6 +599,11 @@ export default function App() {
   useEffect(() => {
     if (authLoading) return;
     void reloadUserData(user);
+  }, [user, authLoading]);
+
+  useEffect(() => {
+    if (authLoading) return;
+    void refreshDailySentenceRemaining(user?.uid ?? null);
   }, [user, authLoading]);
 
   const syncGuestStatsInFlightUidRef = useRef<string | null>(null);
@@ -841,6 +933,7 @@ export default function App() {
   const handleOpenSettings = () => {
     trackEvent("settings_open", getCommonAnalyticsParams());
     setImportNoticeMessage(null);
+    setImportNoticeFocusMyLearning(false);
     setShareSheetOpen(false);
     setLogoutConfirmOpen(false);
     if (openSettingsTimerRef.current !== null) {
@@ -1006,6 +1099,27 @@ export default function App() {
         return;
       }
 
+      const rowsToCheck = rows.slice(0, 10);
+      for (let index = 0; index < rowsToCheck.length; index += 1) {
+        const detectedLanguage = inferLanguageFromSentence(rowsToCheck[index].sentence);
+        const isMismatch = !detectedLanguage || detectedLanguage !== manualLanguage;
+        if (isMismatch) {
+          const detectedLabel = detectedLanguage
+            ? getManualLanguageLabel(ui, detectedLanguage)
+            : appLanguage === "ko"
+              ? "알 수 없음"
+              : "Unknown";
+          showImportNotice(
+            ui.alerts.manualLanguageMismatch(
+              index + 1,
+              detectedLabel,
+              getManualLanguageLabel(ui, manualLanguage)
+            )
+          );
+          return;
+        }
+      }
+
       const saveResult = await saveImportedChapterWithDailyLimit({
         uid: user.uid,
         title,
@@ -1014,9 +1128,12 @@ export default function App() {
         dailyLimit: MANUAL_IMPORT_DAILY_SENTENCE_LIMIT,
       });
       if (!saveResult.ok && saveResult.reason === "daily_limit_exceeded") {
+        setDailySentenceRemaining(saveResult.remaining);
         showImportNotice(ui.alerts.manualPolicyDailyLimit);
         return;
       }
+
+      setDailySentenceRemaining(saveResult.remaining);
   
       await reloadUserData(user);
   
@@ -1026,7 +1143,8 @@ export default function App() {
       showImportNotice(
         `${ui.alerts.manualSaved(title, rows.length)}\n${ui.alerts.manualPolicyDailyRemaining(
           saveResult.remaining
-        )}`
+        )}`,
+        { focusMyLearningAfterClose: true }
       );
     } catch (error) {
       const message =
@@ -1250,6 +1368,8 @@ const handleDeleteChapter = async (sheet: SheetContent) => {
             onTestLevelUpEffect={handleTestLevelUpEffect}
             totalNext={effectiveTotalStats.totalNextCount}
             totalReplay={effectiveTotalStats.totalReplayCount}
+            dailySentenceRemaining={dailySentenceRemaining}
+            dailySentenceLimit={MANUAL_IMPORT_DAILY_SENTENCE_LIMIT}
             appLanguage={appLanguage}
             onChangeLanguage={handleChangeAppLanguage}
             ui={ui}
@@ -1264,10 +1384,10 @@ const handleDeleteChapter = async (sheet: SheetContent) => {
             ui={ui}
           />
 
-          {shareSheetOpen && !settingsOpen && (
+          {shareSheetOpen && (
             <div className="share-sheet-overlay" onClick={() => setShareSheetOpen(false)}>
               <div className="share-sheet" onClick={(e) => e.stopPropagation()}>
-                <h3>{ui.settings.shareSheetTitle}</h3>
+                <h3 className="sangju-gotgam">{ui.settings.shareSheetTitle}</h3>
                 <div className="share-sheet-actions">
                   <button className="control-btn" type="button" onClick={handleShareByMessage}>
                     {ui.settings.shareByMessage}
@@ -1283,7 +1403,7 @@ const handleDeleteChapter = async (sheet: SheetContent) => {
             </div>
           )}
 
-          {logoutConfirmOpen && !settingsOpen && (
+          {logoutConfirmOpen && (
             <div
               className="confirm-overlay"
               onPointerDown={(e) => {
@@ -1312,15 +1432,15 @@ const handleDeleteChapter = async (sheet: SheetContent) => {
               className="confirm-overlay"
               onPointerDown={(e) => {
                 if (e.target === e.currentTarget) {
-                  setImportNoticeMessage(null);
+                  closeImportNotice();
                 }
               }}
             >
               <div className="confirm-modal" onClick={(e) => e.stopPropagation()}>
-                <h3>{ui.common.notice}</h3>
+                <h3 className="sangju-gotgam">{ui.common.notice}</h3>
                 <p className="import-notice-text">{importNoticeMessage}</p>
                 <div className="confirm-actions">
-                  <button className="primary-btn" onClick={() => setImportNoticeMessage(null)}>
+                  <button className="primary-btn" onClick={closeImportNotice}>
                     {ui.common.close}
                   </button>
                 </div>
@@ -1356,7 +1476,9 @@ const handleDeleteChapter = async (sheet: SheetContent) => {
                   className="section-title-icon"
                   aria-hidden="true"
                 />
-                  <span className="sangju-gotgam">{ui.home.myLearningSetsTitle}</span>
+                  <span ref={myLearningTitleRef} className="sangju-gotgam">
+                    {ui.home.myLearningSetsTitle}
+                  </span>
                 </span>
               }
               description={visibleSheets.length > 0 ? ui.home.myLearningSetsDescription : undefined}

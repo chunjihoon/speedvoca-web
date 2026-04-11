@@ -785,7 +785,7 @@ textarea::placeholder {
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 120;
+  z-index: 3200;
   padding: 20px;
 }
 
@@ -1141,7 +1141,7 @@ textarea::placeholder {
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 2000;
+  z-index: 3200;
   padding: 20px;
 }
 
@@ -1182,7 +1182,7 @@ textarea::placeholder {
   display: flex;
   align-items: flex-end;
   justify-content: center;
-  z-index: 2100;
+  z-index: 3200;
   padding: 0 12px calc(12px + env(safe-area-inset-bottom));
 }
 
@@ -1540,6 +1540,12 @@ textarea::placeholder {
 ========================= */
 
 @media (max-width: 900px) {
+  input,
+  textarea,
+  select {
+    font-size: 16px !important;
+  }
+
   .topbar.simple-topbar {
     padding: 16px 14px 14px;
   }
@@ -1621,8 +1627,8 @@ textarea::placeholder {
   background: linear-gradient(
     to bottom,
     rgba(255,255,255,0),
-    rgba(255,240,180,0.95),
-    rgba(96,165,250,0.7),
+    rgba(250,226,132,0.9),
+    rgba(234,179,8,0.68),
     rgba(255,255,255,0)
   );
   filter: blur(18px);
@@ -1635,7 +1641,7 @@ textarea::placeholder {
   width: 340px;
   height: 340px;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(255,224,102,0.85), rgba(59,130,246,0.18), transparent 70%);
+  background: radial-gradient(circle, rgba(250,222,116,0.84), rgba(234,179,8,0.18), transparent 70%);
   animation: levelupBurst 1s ease-out forwards;
 }
 
@@ -1647,8 +1653,8 @@ textarea::placeholder {
   border-radius: 50%;
   border: 6px solid rgba(255,255,255,0.95);
   box-shadow:
-    0 0 30px rgba(59,130,246,0.7),
-    0 0 60px rgba(255,224,102,0.6),
+    0 0 30px rgba(234,179,8,0.56),
+    0 0 60px rgba(250,222,116,0.54),
     0 0 100px rgba(255,255,255,0.35);
   animation: levelupRing 1s ease-out forwards;
 }
@@ -1667,8 +1673,8 @@ textarea::placeholder {
   letter-spacing: 2px;
   text-shadow:
     0 0 10px rgba(255,255,255,0.95),
-    0 0 18px rgba(255,224,102,0.9),
-    0 0 32px rgba(59,130,246,0.8),
+    0 0 18px rgba(250,222,116,0.78),
+    0 0 32px rgba(234,179,8,0.54),
     0 4px 0 #b45309;
   animation: levelupTextPop 0.65s ease-out forwards;
 }
@@ -1680,8 +1686,8 @@ textarea::placeholder {
   color: #ffffff;
   text-shadow:
     0 0 10px rgba(255,255,255,0.9),
-    0 0 20px rgba(59,130,246,0.85),
-    0 0 32px rgba(59,130,246,0.65);
+    0 0 20px rgba(234,179,8,0.58),
+    0 0 32px rgba(217,119,6,0.46);
   animation: levelupTextPop 0.72s ease-out forwards;
 }
 
@@ -1701,7 +1707,7 @@ textarea::placeholder {
   width: 10px;
   height: 22px;
   border-radius: 999px;
-  background: linear-gradient(to bottom, #fff7ae, #60a5fa);
+  background: linear-gradient(to bottom, #fff6bf, #eab308);
   transform-origin: center -110px;
   animation: particleFly 1.15s ease-out forwards;
   opacity: 0;
