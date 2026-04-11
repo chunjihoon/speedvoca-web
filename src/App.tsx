@@ -49,6 +49,7 @@ import { playLevelUpSound } from "./lib/levelUpSound";
 import { recommendedContentMetas, type RecommendedContentMeta } from "./data/recommendContents";
 import { fetchRecommendedSheet } from "./lib/googleSheets";
 import { auth } from "./lib/firebase";
+import { identifyUser, setAnalyticsProps, trackEvent } from "./lib/analytics";
 import myLearningIcon from "./assets/mylearning.png";
 import recommendIcon from "./assets/recommend.png";
 import importIcon from "./assets/import.png";
@@ -151,6 +152,10 @@ export default function App() {
     return saved === "en" ? "en" : "ko";
   });
   const ui = UI_TEXT[appLanguage];
+  const getCommonAnalyticsParams = () => ({
+    is_logged_in: !!user,
+    app_language: appLanguage,
+  });
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -298,6 +303,41 @@ export default function App() {
   
   const showGlobalLoading =
     !activeReaderOpen && (loading || authLoading || userDataLoading);
+
+  useEffect(() => {
+    identifyUser(user?.uid ?? null);
+    setAnalyticsProps({
+      user_type: user ? "member" : "guest",
+      preferred_app_language: appLanguage,
+    });
+  }, [user?.uid, !!user, appLanguage]);
+
+  const trackedReaderSessionKeyRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (showGlobalLoading || error) return;
+
+    if (!activeReaderOpen) {
+      trackEvent("home_view", getCommonAnalyticsParams());
+      trackedReaderSessionKeyRef.current = null;
+      return;
+    }
+
+    const sessionKey = selectedRecommendedSession?.id ?? selectedSheet?.name ?? null;
+    if (!sessionKey || trackedReaderSessionKeyRef.current === sessionKey) return;
+
+    trackedReaderSessionKeyRef.current = sessionKey;
+    trackEvent("reader_enter", {
+      ...getCommonAnalyticsParams(),
+      sheet_type: selectedRecommendedSession ? "recommended" : "my",
+      sheet_name: selectedRecommendedSession?.title ?? selectedSheet?.name ?? sessionKey,
+    });
+  }, [
+    showGlobalLoading,
+    error,
+    activeReaderOpen,
+    selectedRecommendedSession,
+    selectedSheet?.name,
+  ]);
   
   useEffect(() => {
     if (!activeReaderOpen) return;
@@ -309,6 +349,10 @@ export default function App() {
     const handlePopState = () => {
       if (!selectedSheetRef.current) return;
   
+      trackEvent("reader_exit_confirm_open", {
+        ...getCommonAnalyticsParams(),
+        trigger: "browser_back",
+      });
       setExitConfirmOpen(true);
   
       // 실제 이탈 막고 현재 상태 복구
@@ -358,6 +402,10 @@ export default function App() {
     title = ui.loginPrompt.requiredTitle,
     description = ui.loginPrompt.requiredDescription
   ) => {
+    trackEvent("login_prompt_open", {
+      ...getCommonAnalyticsParams(),
+      prompt_title: title,
+    });
     setLoginPromptTitle(title);
     setLoginPromptDescription(description);
     setLoginPromptOpen(true);
@@ -646,6 +694,11 @@ export default function App() {
 
   const handleSelectSheet = (sheet: SheetContent) => {
     const raw = rawSheetMap[sheet.name] ?? sheet;
+    trackEvent("sheet_open_my", {
+      ...getCommonAnalyticsParams(),
+      sheet_name: raw.name,
+      sheet_type: raw.name === FAVORITES_SHEET_NAME ? "favorites" : "my",
+    });
   
     window.history.pushState({ speedvocaReader: true }, "");
   
@@ -682,17 +735,26 @@ export default function App() {
 
   const handleToggleSound = () => {
     const next = !soundEnabled;
+    trackEvent("settings_toggle_sound", {
+      ...getCommonAnalyticsParams(),
+      sound_enabled: next,
+    });
     setSoundEnabledState(next);
     setSoundEnabled(next);
     if (!next) stopSpeech();
   };
 
   const handleChangeRepeatCount = (value: number) => {
+    trackEvent("settings_change_repeat_count", {
+      ...getCommonAnalyticsParams(),
+      repeat_count: value,
+    });
     setRepeatCountState(value);
     setRepeatCount(value);
   };
 
   const handleShareApp = async () => {
+    trackEvent("share_click", getCommonAnalyticsParams());
     const title = "Loopeak";
     const text =
       appLanguage === "ko"
@@ -704,15 +766,18 @@ export default function App() {
     try {
       if (window.isSecureContext && navigator.share) {
         await navigator.share(sharePayload);
+        trackEvent("share_native_success", getCommonAnalyticsParams());
         return;
       }
     } catch (error) {
       // User explicitly closed native share sheet; do not open fallback.
       if (error instanceof DOMException && error.name === "AbortError") {
+        trackEvent("share_native_cancel", getCommonAnalyticsParams());
         return;
       }
     }
 
+    trackEvent("share_fallback_open", getCommonAnalyticsParams());
     setShareSheetOpen(true);
   };
 
@@ -734,6 +799,7 @@ export default function App() {
         document.body.removeChild(temp);
       }
       alert(ui.settings.shareCopied);
+      trackEvent("share_copy_link", getCommonAnalyticsParams());
     } finally {
       setShareSheetOpen(false);
     }
@@ -745,6 +811,7 @@ export default function App() {
       appLanguage === "ko"
         ? `Loopeak 같이 써봐요! ${url}`
         : `Try Loopeak with me! ${url}`;
+    trackEvent("share_channel_message", getCommonAnalyticsParams());
     window.location.href = `sms:?&body=${encodeURIComponent(text)}`;
     setShareSheetOpen(false);
   };
@@ -756,8 +823,35 @@ export default function App() {
       appLanguage === "ko"
         ? `Loopeak 링크를 공유합니다.\n${url}`
         : `Sharing Loopeak link:\n${url}`;
+    trackEvent("share_channel_mail", getCommonAnalyticsParams());
     window.location.href = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
     setShareSheetOpen(false);
+  };
+
+  const handleOpenSettings = () => {
+    trackEvent("settings_open", getCommonAnalyticsParams());
+    setSettingsOpen(true);
+  };
+
+  const handleCloseSettings = () => {
+    trackEvent("settings_close", getCommonAnalyticsParams());
+    setSettingsOpen(false);
+  };
+
+  const handleChangeAppLanguage = (lang: AppLanguage) => {
+    trackEvent("settings_change_app_language", {
+      ...getCommonAnalyticsParams(),
+      next_language: lang,
+    });
+    setAppLanguage(lang);
+  };
+
+  const handleRequestExitReader = () => {
+    trackEvent("reader_exit_confirm_open", {
+      ...getCommonAnalyticsParams(),
+      trigger: "reader_back_button",
+    });
+    setExitConfirmOpen(true);
   };
 
   // const handleExitReader = () => {
@@ -765,6 +859,7 @@ export default function App() {
   // };
   
   const confirmExitReader = () => {
+    trackEvent("reader_exit_confirmed", getCommonAnalyticsParams());
     setExitConfirmOpen(false);
     stopSpeech();
     setSelectedSheet(null);
@@ -772,6 +867,7 @@ export default function App() {
   };
   
   const cancelExitReader = () => {
+    trackEvent("reader_exit_cancelled", getCommonAnalyticsParams());
     setExitConfirmOpen(false);
   };
 
@@ -915,7 +1011,13 @@ const handleDeleteChapter = async (sheet: SheetContent) => {
 
   const handleLogin = async () => {
     setLoginPromptOpen(false);
-    await loginWithGoogle();
+    trackEvent("login_start", getCommonAnalyticsParams());
+    try {
+      await loginWithGoogle();
+      trackEvent("login_success", getCommonAnalyticsParams());
+    } catch {
+      trackEvent("login_fail", getCommonAnalyticsParams());
+    }
   };
 
   const handleRequestLogout = () => {
@@ -926,6 +1028,7 @@ const handleDeleteChapter = async (sheet: SheetContent) => {
     setLogoutConfirmOpen(false);
     stopSpeech();
     await logout();
+    trackEvent("logout_confirmed", getCommonAnalyticsParams());
     setSelectedSheet(null);
     setSelectedRecommendedSession(null);
     setDeveloperModeEnabled(false);
@@ -993,6 +1096,11 @@ const handleDeleteChapter = async (sheet: SheetContent) => {
         targetLanguage: meta.defaultTargetLanguage,
         translationLanguage: getFallbackTranslationLanguage(meta.defaultTargetLanguage),
       });
+      trackEvent("sheet_open_recommended", {
+        ...getCommonAnalyticsParams(),
+        sheet_type: "recommended",
+        sheet_name: meta.id,
+      });
   
       window.history.pushState({ speedvocaReader: true }, "");
     } catch (error) {
@@ -1034,7 +1142,7 @@ const handleDeleteChapter = async (sheet: SheetContent) => {
 
         <button
           className="settings-icon-btn"
-          onClick={() => setSettingsOpen(true)}
+          onClick={handleOpenSettings}
           aria-label={ui.app.settingsAria}
           type="button"
         >
@@ -1062,7 +1170,7 @@ const handleDeleteChapter = async (sheet: SheetContent) => {
 
           <SettingsPanel
             open={settingsOpen}
-            onClose={() => setSettingsOpen(false)}
+            onClose={handleCloseSettings}
             soundEnabled={soundEnabled}
             onToggleSound={handleToggleSound}
             repeatCount={repeatCount}
@@ -1081,7 +1189,7 @@ const handleDeleteChapter = async (sheet: SheetContent) => {
             totalNext={effectiveTotalStats.totalNextCount}
             totalReplay={effectiveTotalStats.totalReplayCount}
             appLanguage={appLanguage}
-            onChangeLanguage={setAppLanguage}
+            onChangeLanguage={handleChangeAppLanguage}
             ui={ui}
           />
 
@@ -1365,7 +1473,7 @@ const handleDeleteChapter = async (sheet: SheetContent) => {
           onGuestStatsDelta={handleGuestStatsDelta}
           chapterSettings={settingsMap[activeDisplaySheet.name]}
           exitConfirmOpen={exitConfirmOpen}
-          onRequestExit={() => setExitConfirmOpen(true)}
+          onRequestExit={handleRequestExitReader}
           onConfirmExit={confirmExitReader}
           onCancelExit={cancelExitReader}
           translationLanguage={selectedRecommendedSession?.translationLanguage ?? null}

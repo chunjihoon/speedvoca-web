@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import type { LanguageCode, SheetContent, TtsVoiceOption } from "../types/content";
 import { speakText, stopSpeech } from "../lib/tts";
+import { trackEvent } from "../lib/analytics";
 import goNextImage from "../assets/goNext.png";
 import goPriorImage from "../assets/goPrior.png";
 import forceNextImage from "../assets/forceNext.png";
@@ -127,6 +128,17 @@ export default function ReaderView({
   const [randomEnabled, setRandomEnabled] = useState(chapterSettings?.randomEnabled ?? false);
   const [fontScale, setFontScale] = useState(chapterSettings?.fontScale ?? 1);
   const [favoriteActive, setFavoriteActive] = useState(false);
+  const sessionStartedAtRef = useRef<number>(Date.now());
+  const sessionCountsRef = useRef({
+    replay: 0,
+    next: 0,
+    prior: 0,
+    forceNext: 0,
+    translationChange: 0,
+    randomToggle: 0,
+    favoriteToggle: 0,
+    fontScaleChange: 0,
+  });
 
   const isFavoritesSheet = sheet.name === FAVORITES_SHEET_NAME;
   const targetLanguageCode = useMemo(() => getTargetLanguageCode(sheet.language), [sheet.language]);
@@ -150,11 +162,58 @@ export default function ReaderView({
   const current = useMemo(() => displayRows[currentIndex], [displayRows, currentIndex]);
   const pendingTranslationPinnedSentenceRef = useRef<string | null>(null);
   const initialEntrySpokenSheetRef = useRef<string | null>(null);
+  const trackReaderEvent = (
+    name: string,
+    params?: Record<string, string | number | boolean | null | undefined>
+  ) => {
+    trackEvent(name, {
+      is_logged_in: isLoggedIn,
+      sheet_name: sheet.name,
+      sheet_session_key: activeSheetSessionKey,
+      current_index: currentIndex,
+      total_rows: displayRows.length,
+      random_enabled: randomEnabled,
+      repeat_count: repeatCount,
+      ...params,
+    });
+  };
 
   useEffect(() => {
     setCurrentIndex(0);
     setSpokenCount(initialSpokenCount);
+    sessionStartedAtRef.current = Date.now();
+    sessionCountsRef.current = {
+      replay: 0,
+      next: 0,
+      prior: 0,
+      forceNext: 0,
+      translationChange: 0,
+      randomToggle: 0,
+      favoriteToggle: 0,
+      fontScaleChange: 0,
+    };
   }, [activeSheetSessionKey, randomEnabled, initialSpokenCount]);
+
+  useEffect(() => {
+    return () => {
+      const elapsedSec = Math.max(1, Math.round((Date.now() - sessionStartedAtRef.current) / 1000));
+      trackEvent("reader_session_summary", {
+        is_logged_in: isLoggedIn,
+        sheet_name: sheet.name,
+        sheet_session_key: activeSheetSessionKey,
+        total_rows: displayRows.length,
+        duration_sec: elapsedSec,
+        replay_count: sessionCountsRef.current.replay,
+        next_count: sessionCountsRef.current.next,
+        prior_count: sessionCountsRef.current.prior,
+        force_next_count: sessionCountsRef.current.forceNext,
+        translation_change_count: sessionCountsRef.current.translationChange,
+        random_toggle_count: sessionCountsRef.current.randomToggle,
+        favorite_toggle_count: sessionCountsRef.current.favoriteToggle,
+        font_scale_change_count: sessionCountsRef.current.fontScaleChange,
+      });
+    };
+  }, [activeSheetSessionKey, isLoggedIn, sheet.name, displayRows.length]);
 
   useEffect(() => {
     const pinnedSentence = pendingTranslationPinnedSentenceRef.current;
@@ -305,9 +364,11 @@ export default function ReaderView({
     if (prevRow) {
       playSentenceIfEnabled(prevRow.sentence);
     }
+    sessionCountsRef.current.prior += 1;
+    trackReaderEvent("reader_action_prior");
   };
 
-  const goNext = async () => {
+  const goNext = async (source: "next" | "force_next" = "force_next") => {
     if (actionLocked) return;
     startActionCooldown();
     stopSpeech();
@@ -321,6 +382,13 @@ export default function ReaderView({
     setSpokenCount(initialSpokenCount);
     if (nextRow) {
       playSentenceIfEnabled(nextRow.sentence);
+    }
+    if (source === "force_next") {
+      sessionCountsRef.current.forceNext += 1;
+      trackReaderEvent("reader_action_force_next");
+    } else {
+      sessionCountsRef.current.next += 1;
+      trackReaderEvent("reader_action_next");
     }
 
     if (isLoggedIn && userId) {
@@ -340,7 +408,7 @@ export default function ReaderView({
 
   const handleReplayAction = async () => {
     if (isReadyForNext) {
-      await goNext();
+      await goNext("next");
       return;
     }
 
@@ -372,6 +440,8 @@ export default function ReaderView({
         totalCompletedSentenceCount: 1,
       });
     }
+    sessionCountsRef.current.replay += 1;
+    trackReaderEvent("reader_action_replay");
   };
 
   const handleFavorite = async () => {
@@ -388,6 +458,8 @@ export default function ReaderView({
     });
 
     await onStatsChanged?.();
+    sessionCountsRef.current.favoriteToggle += 1;
+    trackReaderEvent("reader_favorite_toggle", { favorite_active: result.active });
 
     if (isFavoritesSheet) {
       if (!result.active) {
@@ -417,6 +489,8 @@ export default function ReaderView({
     const next = !randomEnabled;
     setRandomEnabled(next);
     stopSpeech();
+    sessionCountsRef.current.randomToggle += 1;
+    trackReaderEvent("reader_toggle_random", { random_enabled_next: next });
 
     await saveChapterSettings({
       uid: userId,
@@ -436,6 +510,8 @@ export default function ReaderView({
 
     const next = Math.max(0.7, Math.min(1.6, +(fontScale + delta).toFixed(2)));
     setFontScale(next);
+    sessionCountsRef.current.fontScaleChange += 1;
+    trackReaderEvent("reader_change_font_scale", { font_scale: next });
 
     await saveChapterSettings({
       uid: userId,
@@ -450,7 +526,14 @@ export default function ReaderView({
   const handleTranslationLanguageClick = (lang: LanguageCode) => {
     pendingTranslationPinnedSentenceRef.current = current.sentence;
     stopSpeech();
+    sessionCountsRef.current.translationChange += 1;
+    trackReaderEvent("reader_change_translation_language", { translation_language: lang });
     onChangeTranslationLanguage?.(lang);
+  };
+
+  const handleVoiceChange = (nextVoiceUri: string) => {
+    trackReaderEvent("reader_change_voice");
+    onChangeVoice(nextVoiceUri);
   };
 
   return (
@@ -492,7 +575,7 @@ export default function ReaderView({
                 <select
                   className="control-btn reader-inline-select"
                   value={selectedVoiceURI ?? ""}
-                  onChange={(e) => onChangeVoice(e.target.value)}
+                  onChange={(e) => handleVoiceChange(e.target.value)}
                 >
                   {voices.map((voice) => (
                     <option key={voice.voiceURI} value={voice.voiceURI}>
@@ -626,7 +709,9 @@ export default function ReaderView({
 
             <button
               className={`icon-action-btn ${actionLocked ? "cooldown" : ""}`}
-              onClick={goNext}
+              onClick={() => {
+                void goNext("force_next");
+              }}
               disabled={isLast || actionLocked}
               aria-label={ui.reader.forceNextAria}
               type="button"
