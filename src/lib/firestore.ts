@@ -6,6 +6,7 @@ import {
   getDoc,
   getDocs,
   increment,
+  runTransaction,
   serverTimestamp,
   setDoc,
 } from "firebase/firestore";
@@ -268,6 +269,73 @@ export async function saveImportedChapter(params: {
   });
 
   return chapterId;
+}
+
+function getLocalDateKey() {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+export async function saveImportedChapterWithDailyLimit(params: {
+  uid: string;
+  title: string;
+  language: ChapterLanguage;
+  rows: { sentence: string; translation: string }[];
+  dailyLimit: number;
+}) {
+  const { uid, title, language, rows, dailyLimit } = params;
+  const dateKey = getLocalDateKey();
+  const usageRef = doc(db, "users", uid, "manualImportUsage", dateKey);
+  const chapterId =
+    typeof crypto !== "undefined" && "randomUUID" in crypto
+      ? crypto.randomUUID()
+      : `${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+  const chapterRef = doc(db, "users", uid, "importedChapters", chapterId);
+
+  return runTransaction(db, async (tx) => {
+    const usageSnap = await tx.get(usageRef);
+    const currentCount = usageSnap.exists()
+      ? Math.max(0, Number((usageSnap.data() as { count?: number }).count ?? 0))
+      : 0;
+
+    if (currentCount + rows.length > dailyLimit) {
+      return {
+        ok: false as const,
+        reason: "daily_limit_exceeded" as const,
+        remaining: Math.max(0, dailyLimit - currentCount),
+      };
+    }
+
+    const usagePayload: {
+      count: number;
+      updatedAt: unknown;
+      createdAt?: unknown;
+    } = {
+      count: currentCount + rows.length,
+      updatedAt: serverTimestamp(),
+    };
+    if (!usageSnap.exists()) {
+      usagePayload.createdAt = serverTimestamp();
+    }
+    tx.set(usageRef, usagePayload, { merge: true });
+
+    tx.set(chapterRef, {
+      title,
+      language,
+      rows,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    });
+
+    return {
+      ok: true as const,
+      chapterId,
+      remaining: Math.max(0, dailyLimit - (currentCount + rows.length)),
+    };
+  });
 }
 
 export async function loadImportedChapters(uid: string): Promise<ImportedChapter[]> {

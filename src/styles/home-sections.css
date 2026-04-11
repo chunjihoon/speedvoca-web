@@ -379,6 +379,14 @@
   align-content: start !important;
 }
 
+.section-primary .home-horizontal-rail > .sheet-list.sheet-list-single-row {
+  grid-template-rows: minmax(0, var(--my-card-size)) !important;
+}
+
+.section-primary .home-horizontal-rail > .sheet-list.sheet-list-two-rows {
+  grid-template-rows: repeat(2, minmax(0, var(--my-card-size))) !important;
+}
+
 .section-primary .sheet-card-wrap {
   width: var(--my-card-size) !important;
   min-width: var(--my-card-size) !important;

@@ -28,9 +28,11 @@ export default function SheetList({
   showDelete = true,
   ui,
 }: Props) {
+  const rowLayoutClass = sheets.length <= 3 ? "sheet-list-single-row" : "sheet-list-two-rows";
+
   return (
     <div className="home-horizontal-rail">
-      <div className="sheet-list">
+      <div className={`sheet-list ${rowLayoutClass}`}>
         {sheets.map((sheet) => {
           const stats = statsMap[sheet.name] || {};
           const nextCount = stats.nextCount ?? 0;

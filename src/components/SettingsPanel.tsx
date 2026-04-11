@@ -54,9 +54,20 @@ export default function SettingsPanel({
 }: Props) {
   if (!open) return null;
 
+  const handleOverlayPointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (event.target === event.currentTarget) {
+      onClose();
+    }
+  };
+
   return (
-    <div className="settings-overlay" onClick={onClose}>
-      <div className="settings-panel" onClick={(e) => e.stopPropagation()}>
+    <div className="settings-overlay" onPointerDown={handleOverlayPointerDown}>
+      <div
+        className="settings-panel"
+        onClick={(e) => e.stopPropagation()}
+        onMouseDown={(e) => e.stopPropagation()}
+        onTouchStart={(e) => e.stopPropagation()}
+      >
         <div className="settings-header sangju-gotgam">
           <h3>{ui.settings.title}</h3>
           <button className="settings-close-btn" onClick={onClose} type="button">

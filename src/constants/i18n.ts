@@ -12,6 +12,7 @@ type UiText = {
     userFallbackName: string;
   };
   common: {
+    notice: string;
     close: string;
     cancel: string;
     exit: string;
@@ -75,6 +76,8 @@ type UiText = {
   home: {
     myLearningSetsTitle: string;
     myLearningSetsDescription: string;
+    myLearningEmptyDescription: string;
+    myLearningEmptyCta: string;
     recommendedTitle: string;
     recommendedDescription: string;
     importTitle: string;
@@ -119,6 +122,9 @@ type UiText = {
     importDone: (count: number) => string;
     parseFormatLineError: (line: number) => string;
     parseMissingValueLineError: (line: number) => string;
+    manualPolicyMaxChars: (lineText: string) => string;
+    manualPolicyDailyLimit: string;
+    manualPolicyDailyRemaining: (remaining: number) => string;
   };
   reader: {
     emptySentence: string;
@@ -147,6 +153,7 @@ export const UI_TEXT: Record<AppLanguage, UiText> = {
       userFallbackName: "사용자",
     },
     common: {
+      notice: "알림",
       close: "닫기",
       cancel: "취소",
       exit: "종료",
@@ -212,6 +219,9 @@ export const UI_TEXT: Record<AppLanguage, UiText> = {
     home: {
       myLearningSetsTitle: "내 학습 세트",
       myLearningSetsDescription: "당신이 추가하거나 학습 중인 챕터입니다.",
+      myLearningEmptyDescription:
+        "아직 내 학습 세트가 없습니다.\n내 학습자료를 직접 가져와서 공부해보세요!",
+      myLearningEmptyCta: "내 학습자료 직접 가져오기",
       recommendedTitle: "추천 학습 세트",
       recommendedDescription:
         "기본 제공 학습 자료입니다. 로그인하면 원하는 세트를 내 학습 목록에 추가할 수 있습니다.",
@@ -234,7 +244,7 @@ export const UI_TEXT: Record<AppLanguage, UiText> = {
       studyContent: "학습 내용",
       studyContentPlaceholder:
         "How are you? | 잘 지내?\nI’m on my way. | 가는 중이야\nLet’s get started. | 시작하자",
-      language: "언어",
+      language: "학습 언어",
       inputRules: "입력 규칙",
       ruleOneLine: "한 줄 = 한 문장",
       ruleFormat: "형식: sentence | translation",
@@ -263,6 +273,12 @@ export const UI_TEXT: Record<AppLanguage, UiText> = {
         `${line}번째 줄 형식이 올바르지 않습니다. "sentence | translation" 형식으로 입력하세요.`,
       parseMissingValueLineError: (line) =>
         `${line}번째 줄에 sentence 또는 translation이 비어 있습니다.`,
+      manualPolicyMaxChars: (lineText) =>
+        `정책에 의해 지금은 문장당 최대 100자를 초과할 수 없습니다.\n초과 문장: ${lineText}\nPRO 플랜은 5월 오픈 예정입니다.`,
+      manualPolicyDailyLimit:
+        "정책에 의해 지금은 하루 최대 60문장을 초과 생성할 수 없습니다. PRO 플랜은 5월 오픈 예정입니다.",
+      manualPolicyDailyRemaining: (remaining) =>
+        `일일 신규 생성 문장 수 60개 중 ${remaining}개 남음`,
     },
     reader: {
       emptySentence: "학습할 문장이 없습니다.",
@@ -308,6 +324,7 @@ export const UI_TEXT: Record<AppLanguage, UiText> = {
       userFallbackName: "User",
     },
     common: {
+      notice: "Notice",
       close: "Close",
       cancel: "Cancel",
       exit: "Exit",
@@ -374,6 +391,8 @@ export const UI_TEXT: Record<AppLanguage, UiText> = {
     home: {
       myLearningSetsTitle: "My Learning Sets",
       myLearningSetsDescription: "Chapters you added or are currently learning.",
+      myLearningEmptyDescription: "You have no learning sets yet. \nImport your own set and start studying.",
+      myLearningEmptyCta: "Go To Import",
       recommendedTitle: "Recommended Learning Sets",
       recommendedDescription:
         "These are built-in study materials. Login to add the sets you want to your own list.",
@@ -396,7 +415,7 @@ export const UI_TEXT: Record<AppLanguage, UiText> = {
       studyContent: "Study Content",
       studyContentPlaceholder:
         "How are you? | How are you?\nI’m on my way. | I’m on my way.\nLet’s get started. | Let’s get started.",
-      language: "Language",
+      language: "Learning language",
       inputRules: "Input Rules",
       ruleOneLine: "One line = one sentence",
       ruleFormat: "Format: sentence | translation",
@@ -427,6 +446,12 @@ export const UI_TEXT: Record<AppLanguage, UiText> = {
         `Line ${line} is invalid. Please use the "sentence | translation" format.`,
       parseMissingValueLineError: (line) =>
         `Line ${line} has an empty sentence or translation value.`,
+      manualPolicyMaxChars: (lineText) =>
+        `By policy, each sentence is currently limited to 100 characters.\nExceeded text: ${lineText}\nPro plan opens in May.`,
+      manualPolicyDailyLimit:
+        "By policy, you can currently create up to 60 sentences per day. Pro plan opens in May.",
+      manualPolicyDailyRemaining: (remaining) =>
+        `${remaining} out of 60 daily new sentence slots remaining`,
     },
     reader: {
       emptySentence: "There are no sentences to study.",

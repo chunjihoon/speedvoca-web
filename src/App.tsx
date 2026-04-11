@@ -35,6 +35,7 @@ import {
   loadUserStatsWithFallback,
   //saveChapterTitle,
   saveImportedChapter,
+  saveImportedChapterWithDailyLimit,
   deleteImportedChapter,
 
 } from "./lib/firestore";
@@ -83,6 +84,8 @@ const EMPTY_TOTAL_STATS: TotalStats = {
 };
 
 const GUEST_PENDING_STATS_KEY = "speedvoca_guest_pending_stats";
+const MANUAL_IMPORT_MAX_CHARS_PER_SENTENCE = 100;
+const MANUAL_IMPORT_DAILY_SENTENCE_LIMIT = 60;
 
 function sanitizeStats(value: Partial<TotalStats> | null | undefined): TotalStats {
   return {
@@ -178,17 +181,25 @@ export default function App() {
   const [importedSheets, setImportedSheets] = useState<SheetContent[]>([]);
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const openSettingsTimerRef = useRef<number | null>(null);
+  const manualImportSectionRef = useRef<HTMLDivElement | null>(null);
+  const manualImportTitleRef = useRef<HTMLSpanElement | null>(null);
 
   const [settingsMap, setSettingsMap] = useState<Record<string, { randomEnabled?: boolean; fontScale?: number }>>({});
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [shareSheetOpen, setShareSheetOpen] = useState(false);
   const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false);
+  const [importNoticeMessage, setImportNoticeMessage] = useState<string | null>(null);
   //const [loginModalOpen, setLoginModalOpen] = useState(false);
   const [loginPromptOpen, setLoginPromptOpen] = useState(false);
   const [loginPromptTitle, setLoginPromptTitle] = useState(ui.loginPrompt.requiredTitle);
   const [loginPromptDescription, setLoginPromptDescription] = useState(
     ui.loginPrompt.requiredDescription
   );
+
+  const showImportNotice = (message: string) => {
+    setImportNoticeMessage(message);
+  };
 
   const [manualTitle, setManualTitle] = useState("");
   const [manualContent, setManualContent] = useState("");
@@ -254,16 +265,7 @@ export default function App() {
     body.style.width = "100%";
     body.style.overflow = "hidden";
 
-    const preventBackgroundTouchMove = (event: TouchEvent) => {
-      const target = event.target as Element | null;
-      if (target?.closest(".settings-panel")) return;
-      event.preventDefault();
-    };
-
-    document.addEventListener("touchmove", preventBackgroundTouchMove, { passive: false });
-
     return () => {
-      document.removeEventListener("touchmove", preventBackgroundTouchMove);
       body.classList.remove("settings-open");
       documentElement.classList.remove("settings-open");
 
@@ -277,6 +279,14 @@ export default function App() {
       window.scrollTo(0, scrollY);
     };
   }, [settingsOpen]);
+
+  useEffect(() => {
+    return () => {
+      if (openSettingsTimerRef.current !== null) {
+        window.clearTimeout(openSettingsTimerRef.current);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     if (loginPromptOpen) return;
@@ -830,11 +840,24 @@ export default function App() {
 
   const handleOpenSettings = () => {
     trackEvent("settings_open", getCommonAnalyticsParams());
-    setSettingsOpen(true);
+    setImportNoticeMessage(null);
+    setShareSheetOpen(false);
+    setLogoutConfirmOpen(false);
+    if (openSettingsTimerRef.current !== null) {
+      window.clearTimeout(openSettingsTimerRef.current);
+    }
+    openSettingsTimerRef.current = window.setTimeout(() => {
+      setSettingsOpen(true);
+      openSettingsTimerRef.current = null;
+    }, 80);
   };
 
   const handleCloseSettings = () => {
     trackEvent("settings_close", getCommonAnalyticsParams());
+    if (openSettingsTimerRef.current !== null) {
+      window.clearTimeout(openSettingsTimerRef.current);
+      openSettingsTimerRef.current = null;
+    }
     setSettingsOpen(false);
   };
 
@@ -893,14 +916,27 @@ export default function App() {
     return false;
   };
 
-  const handleImport = async () => {
-    const okay = await requireLogin(
-      ui.loginPrompt.importTitle,
-      ui.loginPrompt.importDescription
-    );
-    if (!okay) return;
-  
-    fileInputRef.current?.click();
+  const handleScrollToImportSection = () => {
+    const topbarEl = document.querySelector(".topbar.simple-topbar") as HTMLElement | null;
+    const stickyOffset = topbarEl ? topbarEl.getBoundingClientRect().height : 0;
+
+    if (manualImportTitleRef.current) {
+      const top =
+        window.scrollY +
+        manualImportTitleRef.current.getBoundingClientRect().top -
+        stickyOffset -
+        30;
+      window.scrollTo({
+        top: Math.max(0, top),
+        behavior: "smooth",
+      });
+      return;
+    }
+
+    manualImportSectionRef.current?.scrollIntoView({
+      behavior: "smooth",
+      block: "start",
+    });
   };
 
   const parseManualRows = (raw: string) => {
@@ -934,12 +970,12 @@ export default function App() {
   
     const title = manualTitle.trim();
     if (!title) {
-      alert(ui.alerts.manualTitleRequired);
+      showImportNotice(ui.alerts.manualTitleRequired);
       return;
     }
   
     if (!manualContent.trim()) {
-      alert(ui.alerts.manualContentRequired);
+      showImportNotice(ui.alerts.manualContentRequired);
       return;
     }
   
@@ -949,29 +985,55 @@ export default function App() {
       const rows = parseManualRows(manualContent);
   
       if (!rows.length) {
-        alert(ui.alerts.manualEmptyRows);
+        showImportNotice(ui.alerts.manualEmptyRows);
         return;
       }
-  
-      await saveImportedChapter({
+
+      const overLimitRow = rows.find(
+        (row) =>
+          row.sentence.length > MANUAL_IMPORT_MAX_CHARS_PER_SENTENCE ||
+          row.translation.length > MANUAL_IMPORT_MAX_CHARS_PER_SENTENCE
+      );
+
+      if (overLimitRow) {
+        const overLimitText =
+          overLimitRow.sentence.length > MANUAL_IMPORT_MAX_CHARS_PER_SENTENCE
+            ? overLimitRow.sentence
+            : overLimitRow.translation;
+        const preview =
+          overLimitText.length > 140 ? `${overLimitText.slice(0, 140)}...` : overLimitText;
+        showImportNotice(ui.alerts.manualPolicyMaxChars(preview));
+        return;
+      }
+
+      const saveResult = await saveImportedChapterWithDailyLimit({
         uid: user.uid,
         title,
         language: manualLanguage,
         rows,
+        dailyLimit: MANUAL_IMPORT_DAILY_SENTENCE_LIMIT,
       });
+      if (!saveResult.ok && saveResult.reason === "daily_limit_exceeded") {
+        showImportNotice(ui.alerts.manualPolicyDailyLimit);
+        return;
+      }
   
       await reloadUserData(user);
   
       setManualTitle("");
       setManualContent("");
   
-      alert(ui.alerts.manualSaved(title, rows.length));
+      showImportNotice(
+        `${ui.alerts.manualSaved(title, rows.length)}\n${ui.alerts.manualPolicyDailyRemaining(
+          saveResult.remaining
+        )}`
+      );
     } catch (error) {
       const message =
         error instanceof Error
           ? error.message
           : ui.alerts.manualSaveFailed;
-      alert(message);
+      showImportNotice(message);
     } finally {
       setManualImportLoading(false);
     }
@@ -1043,7 +1105,7 @@ const handleDeleteChapter = async (sheet: SheetContent) => {
       const parsedSheets = await parseWorkbookFile(file);
   
       if (parsedSheets.length === 0) {
-        alert(ui.alerts.importNoSheets);
+        showImportNotice(ui.alerts.importNoSheets);
         return;
       }
   
@@ -1060,10 +1122,10 @@ const handleDeleteChapter = async (sheet: SheetContent) => {
       }
   
       await reloadUserData(user);
-      alert(ui.alerts.importDone(parsedSheets.length));
+      showImportNotice(ui.alerts.importDone(parsedSheets.length));
     } catch (error) {
       console.error(error);
-      alert(ui.alerts.importFailed);
+      showImportNotice(ui.alerts.importFailed);
     } finally {
       if (event.target) {
         event.target.value = "";
@@ -1202,7 +1264,7 @@ const handleDeleteChapter = async (sheet: SheetContent) => {
             ui={ui}
           />
 
-          {shareSheetOpen && (
+          {shareSheetOpen && !settingsOpen && (
             <div className="share-sheet-overlay" onClick={() => setShareSheetOpen(false)}>
               <div className="share-sheet" onClick={(e) => e.stopPropagation()}>
                 <h3>{ui.settings.shareSheetTitle}</h3>
@@ -1221,8 +1283,15 @@ const handleDeleteChapter = async (sheet: SheetContent) => {
             </div>
           )}
 
-          {logoutConfirmOpen && (
-            <div className="confirm-overlay" onClick={() => setLogoutConfirmOpen(false)}>
+          {logoutConfirmOpen && !settingsOpen && (
+            <div
+              className="confirm-overlay"
+              onPointerDown={(e) => {
+                if (e.target === e.currentTarget) {
+                  setLogoutConfirmOpen(false);
+                }
+              }}
+            >
               <div className="confirm-modal" onClick={(e) => e.stopPropagation()}>
                 <h3 className="sangju-gotgam">{ui.settings.logoutConfirmTitle}</h3>
                 <p>{ui.settings.logoutConfirmDescription}</p>
@@ -1232,6 +1301,27 @@ const handleDeleteChapter = async (sheet: SheetContent) => {
                   </button>
                   <button className="primary-btn" onClick={handleConfirmLogout}>
                     {ui.settings.logout}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {importNoticeMessage && !settingsOpen && (
+            <div
+              className="confirm-overlay"
+              onPointerDown={(e) => {
+                if (e.target === e.currentTarget) {
+                  setImportNoticeMessage(null);
+                }
+              }}
+            >
+              <div className="confirm-modal" onClick={(e) => e.stopPropagation()}>
+                <h3>{ui.common.notice}</h3>
+                <p className="import-notice-text">{importNoticeMessage}</p>
+                <div className="confirm-actions">
+                  <button className="primary-btn" onClick={() => setImportNoticeMessage(null)}>
+                    {ui.common.close}
                   </button>
                 </div>
               </div>
@@ -1256,7 +1346,7 @@ const handleDeleteChapter = async (sheet: SheetContent) => {
 
       {!loading && !authLoading && !error && !activeReaderOpen && (        
         <main className="home-layout">
-          {user && visibleSheets.length > 0 && (
+          {user && (
             <SectionBlock
               title={
                 <span className="section-title-with-icon">
@@ -1269,17 +1359,30 @@ const handleDeleteChapter = async (sheet: SheetContent) => {
                   <span className="sangju-gotgam">{ui.home.myLearningSetsTitle}</span>
                 </span>
               }
-              description={ui.home.myLearningSetsDescription}
+              description={visibleSheets.length > 0 ? ui.home.myLearningSetsDescription : undefined}
               variant="primary"
             >
-              <SheetList
-                sheets={visibleSheets}
-                onSelect={handleSelectSheet}
-                onDelete={handleDeleteChapter}
-                isLoggedIn={!!user}
-                statsMap={visibleStatsMap}
-                ui={ui}
-              />
+              {visibleSheets.length > 0 ? (
+                <SheetList
+                  sheets={visibleSheets}
+                  onSelect={handleSelectSheet}
+                  onDelete={handleDeleteChapter}
+                  isLoggedIn={!!user}
+                  statsMap={visibleStatsMap}
+                  ui={ui}
+                />
+              ) : (
+                <div className="my-learning-empty-state">
+                  <p>{ui.home.myLearningEmptyDescription}</p>
+                  <button
+                    type="button"
+                    className="control-btn my-learning-empty-cta"
+                    onClick={handleScrollToImportSection}
+                  >
+                    {ui.home.myLearningEmptyCta}
+                  </button>
+                </div>
+              )}
             </SectionBlock>
           )}
 
@@ -1361,22 +1464,23 @@ const handleDeleteChapter = async (sheet: SheetContent) => {
             </div>
           </SectionBlock>
 
-          <SectionBlock
-            title={
-              <span className="section-title-with-icon sangju-gotgam">
-                <img
-                  src={importIcon}
-                  alt=""
-                  className="section-title-icon"
-                  aria-hidden="true"
-                />
-                <span>{ui.home.importTitle}</span>
-              </span>
-            }
-            description={ui.home.importDescription}
-            variant="import"
-          >
-            <div className="manual-import-panel">
+          <div ref={manualImportSectionRef} className="manual-import-anchor">
+            <SectionBlock
+              title={
+                <span className="section-title-with-icon sangju-gotgam">
+                  <img
+                    src={importIcon}
+                    alt=""
+                    className="section-title-icon"
+                    aria-hidden="true"
+                  />
+                  <span ref={manualImportTitleRef}>{ui.home.importTitle}</span>
+                </span>
+              }
+              description={ui.home.importDescription}
+              variant="import"
+            >
+              <div className="manual-import-panel">
               <div className="manual-import-form">
                 <label className="manual-label">{ui.manualImport.chapterTitle}</label>
                 <input
@@ -1440,14 +1544,16 @@ const handleDeleteChapter = async (sheet: SheetContent) => {
                 </div>
               </div>
 
-              <div className="manual-import-suboption">
+              {/* 이 부분 잠시 미노출 - 다음 배포에 반영 */}
+              {/* <div className="manual-import-suboption">
                 <p>{ui.manualImport.suboption}</p>
                 <button className="card-action" onClick={handleImport}>
                   {ui.manualImport.importExcel}
                 </button>
+              </div> */}
               </div>
-            </div>
-          </SectionBlock>
+            </SectionBlock>
+          </div>
         </main>
       )}
 
