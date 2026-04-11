@@ -41,7 +41,7 @@ export default function SheetList({
             sheet.name === FAVORITES_SHEET_NAME ? ui.common.favoritesLabel : sheet.name;
 
           return (
-            <div key={sheet.name} className="sheet-card-wrap">
+            <div key={sheet.chapterId ?? sheet.name} className="sheet-card-wrap">
               <div
                 className="sheet-card clickable my-sheet-card"
                 onClick={() => onSelect(sheet)}

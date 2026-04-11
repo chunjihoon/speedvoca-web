@@ -411,15 +411,8 @@ export async function saveChapterSettings(params: {
   );
 }
 
-export async function deleteImportedChapter(uid: string, chapterTitle: string) {
-  const snap = await getDocs(collection(db, "users", uid, "importedChapters"));
-
-  const targets = snap.docs.filter((docSnap) => {
-    const data = docSnap.data() as { title?: string };
-    return data.title === chapterTitle;
-  });
-
-  await Promise.all(targets.map((docSnap) => deleteDoc(docSnap.ref)));
+export async function deleteImportedChapter(uid: string, chapterId: string) {
+  await deleteDoc(doc(db, "users", uid, "importedChapters", chapterId));
 }
 
 export async function loadUserStatsWithFallback(uid: string): Promise<UserStats> {

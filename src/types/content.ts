@@ -11,6 +11,7 @@ export type SentenceRow = {
 export type SheetRow = SentenceRow;
 
 export type SheetContent = {
+  chapterId?: string;
   name: string;
   language: ChapterLanguage;
   rows: SentenceRow[];

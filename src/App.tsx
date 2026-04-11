@@ -581,6 +581,7 @@ export default function App() {
       );
       setImportedSheets(
         imported.map((chapter) => ({
+          chapterId: chapter.id,
           name: chapter.title,
           language: chapter.language ?? "en-US",
           rows: chapter.rows,
@@ -795,7 +796,9 @@ export default function App() {
 
 
   const handleSelectSheet = (sheet: SheetContent) => {
-    const raw = rawSheetMap[sheet.name] ?? sheet;
+    const raw = sheet.chapterId
+      ? importedSheets.find((item) => item.chapterId === sheet.chapterId) ?? sheet
+      : rawSheetMap[sheet.name] ?? sheet;
     trackEvent("sheet_open_my", {
       ...getCommonAnalyticsParams(),
       sheet_name: raw.name,
@@ -1171,7 +1174,10 @@ const handleDeleteChapter = async (sheet: SheetContent) => {
       return;
     }
   
-    const isImported = importedSheets.some((item) => item.name === sheet.name);
+    const importedTarget = sheet.chapterId
+      ? importedSheets.find((item) => item.chapterId === sheet.chapterId)
+      : undefined;
+    const isImported = Boolean(importedTarget);
   
     if (!isImported) {
       alert(ui.alerts.deleteDefaultForbidden);
@@ -1181,10 +1187,16 @@ const handleDeleteChapter = async (sheet: SheetContent) => {
     const confirmed = window.confirm(ui.alerts.deleteConfirm(sheet.name));
     if (!confirmed) return;
   
-    await deleteImportedChapter(user.uid, sheet.name);
+    if (!importedTarget?.chapterId) return;
+
+    await deleteImportedChapter(user.uid, importedTarget.chapterId);
     await reloadUserData(user);
   
-    if (selectedSheet?.name === sheet.name) {
+    if (
+      selectedSheet &&
+      ((selectedSheet.chapterId && selectedSheet.chapterId === importedTarget.chapterId) ||
+        (!selectedSheet.chapterId && selectedSheet.name === sheet.name))
+    ) {
       setSelectedSheet(null);
     }
   };
