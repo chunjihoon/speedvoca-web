@@ -29,7 +29,10 @@ type Props = {
   voiceURI: string | null;
   voiceMap: Record<ChapterLanguage, string | null>;
   isLoggedIn: boolean;
-  onRequireLogin: () => Promise<boolean>;
+  onRequireLogin: (triggerFeature?: string) => Promise<boolean>;
+  readerSessionId: string;
+  sheetId: string;
+  sheetType: "recommended" | "my" | "favorite" | "imported" | "sample";
   userId?: string;
   onStatsChanged?: () => Promise<void> | void;
   chapterSettings?: {
@@ -115,6 +118,9 @@ export default function ReaderView({
   voiceMap,
   isLoggedIn,
   onRequireLogin,
+  readerSessionId,
+  sheetId,
+  sheetType,
   userId,
   onStatsChanged,
   chapterSettings,
@@ -182,7 +188,11 @@ export default function ReaderView({
   ) => {
     trackEvent(name, {
       is_logged_in: isLoggedIn,
+      reader_session_id: readerSessionId,
       sheet_name: sheet.name,
+      sheet_id: sheetId,
+      sheet_type: sheetType,
+      language: sheet.language,
       sheet_session_key: activeSheetSessionKey,
       current_index: currentIndex,
       total_rows: displayRows.length,
@@ -396,6 +406,8 @@ export default function ReaderView({
       });
     });
   };
+  const firstReplayTrackedSessionIdRef = useRef<string | null>(null);
+  const firstNextTrackedSessionIdRef = useRef<string | null>(null);
 
   const goPrev = () => {
     if (actionLocked || currentIndex === 0) return;
@@ -432,8 +444,12 @@ export default function ReaderView({
       sessionCountsRef.current.forceNext += 1;
       trackReaderEvent("reader_action_force_next");
     } else {
+      if (firstNextTrackedSessionIdRef.current !== readerSessionId) {
+        firstNextTrackedSessionIdRef.current = readerSessionId;
+        trackReaderEvent("reader_first_next", { language: currentRowLanguage });
+      }
       sessionCountsRef.current.next += 1;
-      trackReaderEvent("reader_action_next");
+      trackReaderEvent("reader_action_next", { language: currentRowLanguage });
     }
 
     if (isLoggedIn && userId) {
@@ -490,13 +506,17 @@ export default function ReaderView({
         totalCompletedSentenceCount: 1,
       });
     }
+    if (firstReplayTrackedSessionIdRef.current !== readerSessionId) {
+      firstReplayTrackedSessionIdRef.current = readerSessionId;
+      trackReaderEvent("reader_first_replay", { language: currentRowLanguage });
+    }
     sessionCountsRef.current.replay += 1;
-    trackReaderEvent("reader_action_replay");
+    trackReaderEvent("reader_action_replay", { language: currentRowLanguage });
   };
 
   const executeFavoriteToggle = async () => {
     if (!isLoggedIn || !userId) {
-      await onRequireLogin();
+      await onRequireLogin("favorite");
       return;
     }
 
@@ -550,7 +570,7 @@ export default function ReaderView({
 
   const handleToggleRandom = async () => {
     if (!isLoggedIn || !userId) {
-      await onRequireLogin();
+      await onRequireLogin("random");
       return;
     }
 
@@ -572,7 +592,7 @@ export default function ReaderView({
 
   const handleFontScale = async (delta: number) => {
     if (!isLoggedIn || !userId) {
-      await onRequireLogin();
+      await onRequireLogin("font_scale");
       return;
     }
 

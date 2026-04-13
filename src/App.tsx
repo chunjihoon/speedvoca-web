@@ -89,6 +89,53 @@ const GUEST_PENDING_STATS_KEY = "speedvoca_guest_pending_stats";
 const MANUAL_IMPORT_MAX_CHARS_PER_SENTENCE = 100;
 const MANUAL_IMPORT_DAILY_SENTENCE_LIMIT = 60;
 
+type AnalyticsSheetType = "recommended" | "my" | "favorite" | "imported" | "sample";
+
+type AcquisitionParams = {
+  traffic_source: string;
+  utm_source?: string;
+  utm_medium?: string;
+  utm_campaign?: string;
+};
+
+function createReaderSessionId() {
+  return `reader_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+}
+
+function readAcquisitionParams(): AcquisitionParams {
+  if (typeof window === "undefined") {
+    return { traffic_source: "direct" };
+  }
+
+  const search = new URLSearchParams(window.location.search);
+  const utm_source = search.get("utm_source")?.trim() || undefined;
+  const utm_medium = search.get("utm_medium")?.trim() || undefined;
+  const utm_campaign = search.get("utm_campaign")?.trim() || undefined;
+
+  let traffic_source = utm_source;
+  if (!traffic_source) {
+    const referrer = document.referrer;
+    if (!referrer) {
+      traffic_source = "direct";
+    } else {
+      try {
+        const refHost = new URL(referrer).hostname.replace(/^www\./, "");
+        const currentHost = window.location.hostname.replace(/^www\./, "");
+        traffic_source = refHost === currentHost ? "internal" : refHost;
+      } catch {
+        traffic_source = "referral";
+      }
+    }
+  }
+
+  return {
+    traffic_source: traffic_source || "direct",
+    utm_source,
+    utm_medium,
+    utm_campaign,
+  };
+}
+
 function sanitizeStats(value: Partial<TotalStats> | null | undefined): TotalStats {
   return {
     totalCompletedSentenceCount: Math.max(0, value?.totalCompletedSentenceCount ?? 0),
@@ -188,15 +235,12 @@ function getManualLanguageLabel(ui: AppUiText, language: ChapterLanguage): strin
 
 export default function App() {
   const { user, authLoading } = useAuth();
+  const acquisitionParams = useMemo(() => readAcquisitionParams(), []);
   const [appLanguage, setAppLanguage] = useState<AppLanguage>(() => {
     const saved = localStorage.getItem(APP_LANGUAGE_STORAGE_KEY);
     return saved === "en" ? "en" : "ko";
   });
   const ui = UI_TEXT[appLanguage];
-  const getCommonAnalyticsParams = () => ({
-    is_logged_in: !!user,
-    app_language: appLanguage,
-  });
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -290,6 +334,13 @@ export default function App() {
   const isDeveloperAccount =
     !!user?.email && DEVELOPER_EMAILS.includes(user.email.trim().toLowerCase());
 
+  const getCommonAnalyticsParams = () => ({
+    is_logged_in: !!user,
+    app_language: appLanguage,
+    is_tester: isDeveloperAccount,
+    ...acquisitionParams,
+  });
+
   const [developerModeEnabled, setDeveloperModeEnabled] = useState(() => {
     return localStorage.getItem("speedvoca_developer_mode") === "true";
   });
@@ -298,12 +349,41 @@ export default function App() {
   const [selectedSheet, setSelectedSheet] = useState<SheetContent | null>(null);
   const [selectedRecommendedSession, setSelectedRecommendedSession] =
     useState<RecommendedStudySession | null>(null);
+  const [readerSessionId, setReaderSessionId] = useState<string | null>(null);
   
   const [recommendedLoadError, setRecommendedLoadError] = useState<string | null>(null);
   const [recommendedRemoteMap, setRecommendedRemoteMap] = useState<
     Record<string, MultilingualRemoteSheetContent>
   >({});
   const [loadingRecommendedId, setLoadingRecommendedId] = useState<string | null>(null);
+
+  const getSheetAnalyticsType = (sheet: SheetContent): AnalyticsSheetType => {
+    if (sheet.name === FAVORITES_SHEET_NAME) return "favorite";
+    if (sheet.chapterId) return "imported";
+    return "my";
+  };
+
+  const getActiveSheetAnalyticsMeta = () => {
+    if (selectedRecommendedSession) {
+      return {
+        sheet_id: selectedRecommendedSession.sourceSheetId,
+        sheet_type: "recommended" as AnalyticsSheetType,
+        language: toChapterLanguage(selectedRecommendedSession.targetLanguage),
+        sheet_name: selectedRecommendedSession.title,
+      };
+    }
+
+    if (selectedSheet) {
+      return {
+        sheet_id: selectedSheet.chapterId ?? selectedSheet.name,
+        sheet_type: getSheetAnalyticsType(selectedSheet),
+        language: selectedSheet.language,
+        sheet_name: selectedSheet.name,
+      };
+    }
+
+    return null;
+  };
 
   const refreshDailySentenceRemaining = async (targetUid?: string | null) => {
     if (!targetUid) {
@@ -418,6 +498,7 @@ export default function App() {
     if (!activeReaderOpen) {
       trackEvent("home_view", getCommonAnalyticsParams());
       trackedReaderSessionKeyRef.current = null;
+      setReaderSessionId(null);
       return;
     }
 
@@ -425,16 +506,26 @@ export default function App() {
     if (!sessionKey || trackedReaderSessionKeyRef.current === sessionKey) return;
 
     trackedReaderSessionKeyRef.current = sessionKey;
+    const nextReaderSessionId = readerSessionId ?? createReaderSessionId();
+    if (!readerSessionId) {
+      setReaderSessionId(nextReaderSessionId);
+    }
+    const sheetMeta = getActiveSheetAnalyticsMeta();
     trackEvent("reader_enter", {
       ...getCommonAnalyticsParams(),
-      sheet_type: selectedRecommendedSession ? "recommended" : "my",
-      sheet_name: selectedRecommendedSession?.title ?? selectedSheet?.name ?? sessionKey,
+      reader_session_id: nextReaderSessionId,
+      sheet_name: sheetMeta?.sheet_name ?? sessionKey,
+      sheet_id: sheetMeta?.sheet_id ?? sessionKey,
+      sheet_type: sheetMeta?.sheet_type ?? "my",
+      language: sheetMeta?.language ?? "en-US",
     });
   }, [
     showGlobalLoading,
     error,
     activeReaderOpen,
     selectedRecommendedSession,
+    readerSessionId,
+    selectedSheet,
     selectedSheet?.name,
   ]);
   
@@ -499,11 +590,13 @@ export default function App() {
 
   const showLoginPrompt = (
     title = ui.loginPrompt.requiredTitle,
-    description = ui.loginPrompt.requiredDescription
+    description = ui.loginPrompt.requiredDescription,
+    triggerFeature?: string
   ) => {
     trackEvent("login_prompt_open", {
       ...getCommonAnalyticsParams(),
       prompt_title: title,
+      trigger_feature: triggerFeature,
     });
     setLoginPromptTitle(title);
     setLoginPromptDescription(description);
@@ -840,10 +933,15 @@ export default function App() {
     const raw = sheet.chapterId
       ? importedSheets.find((item) => item.chapterId === sheet.chapterId) ?? sheet
       : rawSheetMap[sheet.name] ?? sheet;
+    setReaderSessionId(createReaderSessionId());
+    const sheetType = getSheetAnalyticsType(raw);
+    const sheetId = raw.chapterId ?? raw.name;
     trackEvent("sheet_open_my", {
       ...getCommonAnalyticsParams(),
       sheet_name: raw.name,
-      sheet_type: raw.name === FAVORITES_SHEET_NAME ? "favorites" : "my",
+      sheet_id: sheetId,
+      sheet_type: sheetType,
+      language: raw.language,
     });
   
     window.history.pushState({ speedvocaReader: true }, "");
@@ -1047,10 +1145,11 @@ export default function App() {
 
   const requireLogin = async (
     title = ui.loginPrompt.requiredTitle,
-    description = ui.loginPrompt.requiredDescription
+    description = ui.loginPrompt.requiredDescription,
+    triggerFeature?: string
   ) => {
     if (user) return true;
-    showLoginPrompt(title, description);
+    showLoginPrompt(title, description, triggerFeature);
     return false;
   };
 
@@ -1102,7 +1201,8 @@ export default function App() {
   const handleManualImport = async () => {
     const okay = await requireLogin(
       ui.loginPrompt.manualSaveTitle,
-      ui.loginPrompt.manualSaveDescription
+      ui.loginPrompt.manualSaveDescription,
+      "manual_import"
     );
     if (!okay || !user) return;
   
@@ -1206,7 +1306,8 @@ export default function App() {
 const handleDeleteChapter = async (sheet: SheetContent) => {
   const okay = await requireLogin(
     ui.loginPrompt.deleteTitle,
-    ui.loginPrompt.deleteDescription
+    ui.loginPrompt.deleteDescription,
+    "delete_chapter"
   );
   
   if (!okay || !user) return;
@@ -1322,6 +1423,7 @@ const handleDeleteChapter = async (sheet: SheetContent) => {
       }
   
       setSelectedSheet(null);
+      setReaderSessionId(createReaderSessionId());
       setSelectedRecommendedSession({
         id: meta.id,
         title: ui.recommendedTitles[meta.id] ?? meta.title,
@@ -1332,8 +1434,10 @@ const handleDeleteChapter = async (sheet: SheetContent) => {
       });
       trackEvent("sheet_open_recommended", {
         ...getCommonAnalyticsParams(),
+        sheet_id: meta.sourceSheetId,
         sheet_type: "recommended",
         sheet_name: meta.id,
+        language: toChapterLanguage(meta.defaultTargetLanguage),
       });
   
       window.history.pushState({ speedvocaReader: true }, "");
@@ -1424,7 +1528,11 @@ const handleDeleteChapter = async (sheet: SheetContent) => {
             isLoggedIn={!!user}
             userName={user?.displayName || user?.email || ui.app.userFallbackName}
             onLogin={() =>
-              showLoginPrompt(ui.loginPrompt.quickLoginTitle, ui.loginPrompt.quickLoginDescription)
+              showLoginPrompt(
+                ui.loginPrompt.quickLoginTitle,
+                ui.loginPrompt.quickLoginDescription,
+                "settings_login"
+              )
             }
             onLogout={handleRequestLogout}
             onShare={handleShareApp}
@@ -1603,7 +1711,8 @@ const handleDeleteChapter = async (sheet: SheetContent) => {
                     if (locked) {
                       showLoginPrompt(
                         ui.loginPrompt.moreSamplesTitle,
-                        ui.loginPrompt.moreSamplesDescription
+                        ui.loginPrompt.moreSamplesDescription,
+                        "open_recommended"
                       );
                       return;
                     }
@@ -1761,11 +1870,23 @@ const handleDeleteChapter = async (sheet: SheetContent) => {
           selectedVoiceURI={selectedVoiceMap[activeDisplaySheet.language] ?? null}
           onChangeVoice={handleChangeVoice}
           isLoggedIn={!!user}
-          onRequireLogin={() =>
+          onRequireLogin={(triggerFeature) =>
             requireLogin(
               ui.loginPrompt.readerFeatureTitle,
-              ui.loginPrompt.readerFeatureDescription
+              ui.loginPrompt.readerFeatureDescription,
+              triggerFeature
             )
+          }
+          readerSessionId={readerSessionId ?? `${selectedRecommendedSession?.id ?? activeDisplaySheet.name}`}
+          sheetId={
+            selectedRecommendedSession?.sourceSheetId ??
+            activeDisplaySheet.chapterId ??
+            activeDisplaySheet.name
+          }
+          sheetType={
+            selectedRecommendedSession
+              ? "recommended"
+              : getSheetAnalyticsType(activeDisplaySheet)
           }
           userId={user?.uid}
           onStatsChanged={() => reloadUserData(user)}
