@@ -73,6 +73,24 @@ export async function ensureUserProfile(params: {
   );
 }
 
+export async function loadReaderGuideSeen(uid: string): Promise<boolean> {
+  const snap = await getDoc(doc(db, "users", uid));
+  if (!snap.exists()) return false;
+  const data = snap.data() as { readerGuideSeen?: boolean };
+  return data.readerGuideSeen === true;
+}
+
+export async function saveReaderGuideSeen(uid: string) {
+  await setDoc(
+    doc(db, "users", uid),
+    {
+      readerGuideSeen: true,
+      updatedAt: serverTimestamp(),
+    },
+    { merge: true }
+  );
+}
+
 export async function loadUserChapterMeta(uid: string): Promise<Record<string, ChapterMeta>> {
   const snap = await getDocs(collection(db, "users", uid, "chapterMeta"));
   const result: Record<string, ChapterMeta> = {};

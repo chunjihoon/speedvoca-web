@@ -717,8 +717,14 @@ textarea::placeholder {
 .settings-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
   gap: 12px;
+}
+
+.settings-header-left {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
 }
 
 .settings-header h3 {
@@ -2093,6 +2099,27 @@ textarea::placeholder {
   justify-content: center;
 }
 
+.reader-inline-guide {
+  width: 44px;
+  min-width: 44px;
+  height: 44px;
+  padding: 0;
+  border-radius: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+.reader-inline-guide-icon {
+  width: 44px;
+  height: 44px;
+  object-fit: contain;
+  display: block;
+}
+
 .reader-inline-share-icon {
   width: 22px;
   height: 22px;
@@ -2313,6 +2340,17 @@ textarea::placeholder {
   .reader-inline-share {
     width: 44px;
     min-width: 44px;
+    height: 44px;
+  }
+
+  .reader-inline-guide {
+    width: 44px;
+    min-width: 44px;
+    height: 44px;
+  }
+
+  .reader-inline-guide-icon {
+    width: 44px;
     height: 44px;
   }
 
@@ -2743,6 +2781,10 @@ textarea::placeholder {
   opacity: 0.5;
 }
 
+.reader-guide-target {
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.95), 0 0 0 8px rgba(239, 68, 68, 0.48);
+}
+
 .icon-action-btn.cooldown {
   opacity: 0.78;
 }
@@ -2810,6 +2852,90 @@ textarea::placeholder {
     transform: scaleX(0);
     opacity: 0.35;
   }
+}
+
+.reader-guide-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 3000;
+  background: rgba(15, 23, 42, 0.55);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 16px;
+}
+
+.reader-guide-card {
+  width: min(520px, 100%);
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 16px 16px 14px;
+  box-shadow: 0 14px 40px rgba(2, 6, 23, 0.34);
+  margin-bottom: calc(env(safe-area-inset-bottom) + 108px);
+}
+
+.reader-guide-card.step-2 {
+  margin-bottom: auto;
+  margin-top: 72px;
+}
+
+.reader-guide-progress {
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--text-muted);
+}
+
+.reader-guide-card h3 {
+  margin: 6px 0 8px;
+  font-size: 19px;
+}
+
+.reader-guide-inline-text {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.reader-guide-inline-icon-wrap {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: rgba(103, 213, 95, 0.18);
+  border: 1px solid rgba(10, 145, 0, 0.28);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.reader-guide-inline-icon-wrap.replay {
+  background: var(--c500);
+  border-color: #087700;
+}
+
+.reader-guide-inline-icon {
+  width: 21px;
+  height: 21px;
+  object-fit: contain;
+}
+
+.reader-guide-inline-icon-wrap.settings {
+  background: rgba(103, 213, 95, 0.18);
+  border-color: rgba(10, 145, 0, 0.28);
+}
+
+.reader-guide-card p {
+  margin: 0;
+  color: var(--text-soft);
+  line-height: 1.45;
+}
+
+.reader-guide-actions {
+  margin-top: 14px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
 }
 
 @media (max-width: 900px) {
