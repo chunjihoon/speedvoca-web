@@ -75,12 +75,16 @@ type UiText = {
     readerFeatureDescription: string;
   };
   home: {
+    firstVisitTitle: string;
+    firstVisitDescription: string;
+    firstVisitCta: string;
     myLearningSetsTitle: string;
     myLearningSetsDescription: string;
     myLearningEmptyDescription: string;
     myLearningEmptyCta: string;
     recommendedTitle: string;
     recommendedDescription: string;
+    recommendedLockedHint: string;
     importTitle: string;
     importDescription: string;
     loadingCard: string;
@@ -226,6 +230,9 @@ export const UI_TEXT: Record<AppLanguage, UiText> = {
         "좀 더 자세한 기능은 로그인 후 사용할 수 있습니다.",
     },
     home: {
+      firstVisitTitle: "룹픽이 처음이신가요? 영어 일상회화부터 시작해보세요",
+      firstVisitDescription: "로그인 없이 바로 체험할 수 있는 무료 샘플입니다",
+      firstVisitCta: "영어 일상회화 학습하러 가기",
       myLearningSetsTitle: "내 학습 세트",
       myLearningSetsDescription: "당신이 추가하거나 학습 중인 챕터입니다.",
       myLearningEmptyDescription:
@@ -234,6 +241,7 @@ export const UI_TEXT: Record<AppLanguage, UiText> = {
       recommendedTitle: "추천 학습 세트",
       recommendedDescription:
         "기본 제공 학습 자료입니다. 로그인하면 원하는 세트를 내 학습 목록에 추가할 수 있습니다.",
+      recommendedLockedHint: "로그인 후 사용 가능",
       importTitle: "내 학습 자료 가져오기",
       importDescription:
         "문장과 해석을 직접 입력해서 나만의 학습 챕터를 만들 수 있습니다. 각 줄은 sentence | translation 형식으로 입력하세요.",
@@ -407,6 +415,9 @@ export const UI_TEXT: Record<AppLanguage, UiText> = {
         "You can use more detail features after login.",
     },
     home: {
+      firstVisitTitle: "New to Loopeak? Start with English daily conversation.",
+      firstVisitDescription: "This is a free sample you can try right away without login.",
+      firstVisitCta: "Start English Daily Conversation",
       myLearningSetsTitle: "My Learning Sets",
       myLearningSetsDescription: "Chapters you added or are currently learning.",
       myLearningEmptyDescription: "You have no learning sets yet. \nImport your own set and start studying.",
@@ -414,6 +425,7 @@ export const UI_TEXT: Record<AppLanguage, UiText> = {
       recommendedTitle: "Recommended Learning Sets",
       recommendedDescription:
         "These are built-in study materials. Login to add the sets you want to your own list.",
+      recommendedLockedHint: "Available after login",
       importTitle: "Import Your Own Study Material",
       importDescription:
         "Create your own study chapter by entering sentence and translation pairs. Each line should follow the sentence | translation format.",

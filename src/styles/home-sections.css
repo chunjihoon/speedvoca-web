@@ -113,6 +113,25 @@
   .recommended-tile.loading {
     pointer-events: none;
   }
+
+  .recommended-locked-hint {
+    margin-top: 6px;
+    font-size: 12px;
+    font-weight: 700;
+    color: #64748b;
+    line-height: 1.2;
+    text-align: center;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+  }
+
+  .recommended-locked-hint::before {
+    content: "🔒";
+    font-size: 12px;
+    line-height: 1;
+  }
   
   .recommended-tile-image-wrap {
     width: 100%;

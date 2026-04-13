@@ -446,6 +446,17 @@ textarea::placeholder {
   margin: 0 auto;
 }
 
+.first-visit-cta-wrap {
+  display: flex;
+  justify-content: center;
+}
+
+.first-visit-cta-btn {
+  margin: 0 auto;
+  background: rgba(103, 213, 95, 0.22);
+  font-weight: 800;
+}
+
 .manual-import-anchor {
   scroll-margin-top: 12px;
 }

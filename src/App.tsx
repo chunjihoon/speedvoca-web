@@ -1640,6 +1640,30 @@ const handleDeleteChapter = async (sheet: SheetContent) => {
 
       {!loading && !authLoading && !error && !activeReaderOpen && (        
         <main className="home-layout">
+          {!user && (
+            <SectionBlock
+              title={<span className="sangju-gotgam">{ui.home.firstVisitTitle}</span>}
+              description={ui.home.firstVisitDescription}
+              variant="secondary"
+            >
+              <div className="first-visit-cta-wrap">
+                <button
+                  type="button"
+                  className="control-btn first-visit-cta-btn"
+                  onClick={() => {
+                    const englishSample = recommendedContentMetas.find(
+                      (item) => item.id === "daily-en"
+                    );
+                    if (!englishSample) return;
+                    handleOpenRecommended(englishSample);
+                  }}
+                >
+                  {ui.home.firstVisitCta}
+                </button>
+              </div>
+            </SectionBlock>
+          )}
+
           {user && (
             <SectionBlock
               title={
@@ -1749,6 +1773,9 @@ const handleDeleteChapter = async (sheet: SheetContent) => {
                         <div className="recommended-card-title recommended-tile-title">
                           {isLoading ? ui.home.loadingCard : localizedTitle}
                         </div>
+                        {locked && !isLoading ? (
+                          <div className="recommended-locked-hint">{ui.home.recommendedLockedHint}</div>
+                        ) : null}
                       </div>
                     </div>
                   );
