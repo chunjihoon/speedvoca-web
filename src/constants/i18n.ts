@@ -32,6 +32,8 @@ type UiText = {
     title: string;
     soundOn: string;
     soundOff: string;
+    levelUpSoundOn: string;
+    levelUpSoundOff: string;
     repeat: string;
     dailyNewSentenceRemaining: string;
     studyStats: string;
@@ -185,6 +187,8 @@ export const UI_TEXT: Record<AppLanguage, UiText> = {
       title: "설정",
       soundOn: "🔊 성우 켜짐",
       soundOff: "🔇 성우 꺼짐",
+      levelUpSoundOn: "🔊 레벨업 사운드 켜짐",
+      levelUpSoundOff: "🔇 레벨업 사운드 꺼짐",
       repeat: "문장당 반복 횟수",
       dailyNewSentenceRemaining: "일일 생성 신규 잔여 문장 수",
       studyStats: "학습 통계",
@@ -369,6 +373,8 @@ export const UI_TEXT: Record<AppLanguage, UiText> = {
       title: "Settings",
       soundOn: "🔊 Voice On",
       soundOff: "🔇 Voice Off",
+      levelUpSoundOn: "🔊 Level-Up Sound On",
+      levelUpSoundOff: "🔇 Level-Up Sound Off",
       repeat: "Repeat count",
       dailyNewSentenceRemaining: "Daily new sentence remaining",
       studyStats: "Study Stats",

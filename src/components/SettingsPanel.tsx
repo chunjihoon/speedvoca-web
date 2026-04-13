@@ -6,6 +6,8 @@ type Props = {
   onClose: () => void;
   soundEnabled: boolean;
   onToggleSound: () => void;
+  levelUpSoundEnabled: boolean;
+  onToggleLevelUpSound: () => void;
   repeatCount: number;
   onChangeRepeatCount: (value: number) => void;
   // voices: TtsVoiceOption[];
@@ -34,6 +36,8 @@ export default function SettingsPanel({
   onClose,
   soundEnabled,
   onToggleSound,
+  levelUpSoundEnabled,
+  onToggleLevelUpSound,
   repeatCount,
   onChangeRepeatCount,
   // voices,
@@ -97,6 +101,17 @@ export default function SettingsPanel({
               <option value={5}>5</option>
             </select>
           </label>
+        </div>
+
+        <div className="settings-section">
+          <button
+            className="control-btn settings-levelup-sound-btn"
+            onClick={onToggleLevelUpSound}
+          >
+            {levelUpSoundEnabled
+              ? ui.settings.levelUpSoundOn
+              : ui.settings.levelUpSoundOff}
+          </button>
         </div>
 
         <div className="settings-section">
@@ -173,7 +188,7 @@ export default function SettingsPanel({
           {isLoggedIn ? (
             <div className="account-row">
               <div className="user-chip">{userName}</div>
-              <button className="control-btn" onClick={onLogout}>
+              <button className="control-btn account-logout-btn" onClick={onLogout}>
                 {ui.settings.logout}
               </button>
             </div>

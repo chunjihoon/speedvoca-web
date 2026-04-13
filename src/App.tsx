@@ -11,9 +11,11 @@ import type {
 import SheetList from "./components/SheetList";
 import ReaderView from "./components/ReaderView";
 import {
+  getLevelUpSoundEnabled,
   getRepeatCount,
   getSoundEnabled,
   getVoiceMap,
+  setLevelUpSoundEnabled,
   setRepeatCount,
   setSoundEnabled,
   setVoiceMap,
@@ -245,6 +247,9 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [soundEnabled, setSoundEnabledState] = useState(getSoundEnabled());
+  const [levelUpSoundEnabled, setLevelUpSoundEnabledState] = useState(
+    getLevelUpSoundEnabled()
+  );
   const [repeatCount, setRepeatCountState] = useState(getRepeatCount());
   const [voices, setVoices] = useState<TtsVoiceOption[]>([]);
   const [selectedVoiceMap, setSelectedVoiceMap] = useState<VoiceMap>(getVoiceMap());  
@@ -465,7 +470,9 @@ export default function App() {
 
   const handleTestLevelUpEffect = () => {
     setShowLevelUpEffect(true);
-    playLevelUpSound();
+    if (levelUpSoundEnabled) {
+      playLevelUpSound();
+    }
   
     window.setTimeout(() => {
       setShowLevelUpEffect(false);
@@ -915,7 +922,9 @@ export default function App() {
 
     if (nextLevel > baseline.level) {
       setShowLevelUpEffect(true);
-      playLevelUpSound();
+      if (levelUpSoundEnabled) {
+        playLevelUpSound();
+      }
 
       window.setTimeout(() => {
         setShowLevelUpEffect(false);
@@ -926,7 +935,7 @@ export default function App() {
       owner: levelEffectOwner,
       level: nextLevel,
     };
-  }, [levelSummary.currentLevel, levelEffectOwner, levelEffectReady]);
+  }, [levelSummary.currentLevel, levelEffectOwner, levelEffectReady, levelUpSoundEnabled]);
 
 
   const handleSelectSheet = (sheet: SheetContent) => {
@@ -986,6 +995,16 @@ export default function App() {
     setSoundEnabledState(next);
     setSoundEnabled(next);
     if (!next) stopSpeech();
+  };
+
+  const handleToggleLevelUpSound = () => {
+    const next = !levelUpSoundEnabled;
+    trackEvent("settings_toggle_level_up_sound", {
+      ...getCommonAnalyticsParams(),
+      level_up_sound_enabled: next,
+    });
+    setLevelUpSoundEnabledState(next);
+    setLevelUpSoundEnabled(next);
   };
 
   const handleChangeRepeatCount = (value: number) => {
@@ -1523,6 +1542,8 @@ const handleDeleteChapter = async (sheet: SheetContent) => {
             onClose={handleCloseSettings}
             soundEnabled={soundEnabled}
             onToggleSound={handleToggleSound}
+            levelUpSoundEnabled={levelUpSoundEnabled}
+            onToggleLevelUpSound={handleToggleLevelUpSound}
             repeatCount={repeatCount}
             onChangeRepeatCount={handleChangeRepeatCount}
             isLoggedIn={!!user}

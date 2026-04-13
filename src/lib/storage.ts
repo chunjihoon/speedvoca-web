@@ -1,6 +1,7 @@
 import type { ChapterLanguage } from "../types/content";
 
 const SOUND_ENABLED_KEY = "speedvoca_sound_enabled";
+const LEVEL_UP_SOUND_ENABLED_KEY = "speedvoca_level_up_sound_enabled";
 const REPEAT_COUNT_KEY = "speedvoca_repeat_count";
 const VOICE_MAP_KEY = "speedvoca_voice_map";
 
@@ -12,6 +13,16 @@ export function getSoundEnabled(): boolean {
 
 export function setSoundEnabled(value: boolean) {
   localStorage.setItem(SOUND_ENABLED_KEY, String(value));
+}
+
+export function getLevelUpSoundEnabled(): boolean {
+  const raw = localStorage.getItem(LEVEL_UP_SOUND_ENABLED_KEY);
+  if (raw == null) return true;
+  return raw === "true";
+}
+
+export function setLevelUpSoundEnabled(value: boolean) {
+  localStorage.setItem(LEVEL_UP_SOUND_ENABLED_KEY, String(value));
 }
 
 export function getRepeatCount(): number {

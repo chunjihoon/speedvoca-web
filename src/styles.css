@@ -752,6 +752,11 @@ textarea::placeholder {
   background: rgba(103, 213, 95, 0.24);
 }
 
+.settings-levelup-sound-btn {
+  align-self: flex-start;
+  width: auto;
+}
+
 .settings-subtitle {
   font-size: 13px;
   font-weight: 800;
@@ -822,9 +827,14 @@ textarea::placeholder {
 
 .account-row {
   display: grid;
-  grid-template-columns: 1fr auto;
+  grid-template-columns: 1fr 1fr;
   align-items: center;
   gap: 12px;
+}
+
+.account-logout-btn {
+  width: 100%;
+  text-align: center;
 }
 
 .user-chip {
