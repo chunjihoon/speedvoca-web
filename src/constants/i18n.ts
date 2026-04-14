@@ -152,17 +152,6 @@ type UiText = {
     goNextAria: string;
     replayAria: string;
     forceNextAria: string;
-    guideTitle: string;
-    guideReplayBefore: string;
-    guideReplayAfter: string;
-    guideForceNextBefore: string;
-    guideForceNextAfter: string;
-    guideSettingsBefore: string;
-    guideSettingsAfter: string;
-    guideSkip: string;
-    guideNext: string;
-    guideDone: string;
-    guideReopenAria: string;
     languageName: Record<"en" | "zh" | "fr" | "ja" | "ko", string>;
   };
   recommendedTitles: Record<string, string>;
@@ -196,7 +185,7 @@ export const UI_TEXT: Record<AppLanguage, UiText> = {
     },
     settings: {
       title: "설정",
-      soundOn: "🗣️ 성우 켜짐",
+      soundOn: "🔊 성우 켜짐",
       soundOff: "🔇 성우 꺼짐",
       levelUpSoundOn: "🔊 레벨업 사운드 켜짐",
       levelUpSoundOff: "🔇 레벨업 사운드 꺼짐",
@@ -332,17 +321,6 @@ export const UI_TEXT: Record<AppLanguage, UiText> = {
       goNextAria: "다음으로",
       replayAria: "리플레이",
       forceNextAria: "강제로 다음",
-      guideTitle: "룹픽 학습 가이드",
-      guideReplayBefore: "가운데 음성 버튼",
-      guideReplayAfter: "을 누르면 현재 문장이 반복재생 됩니다.",
-      guideForceNextBefore: "오른쪽 다음으로 이동 버튼",
-      guideForceNextAfter: "을 누르면 바로 다음 문장으로 이동합니다.",
-      guideSettingsBefore: "반복 횟수 조절은 우측 상단 설정 버튼",
-      guideSettingsAfter: "에서 변경할 수 있습니다.",
-      guideSkip: "건너뛰기",
-      guideNext: "다음",
-      guideDone: "확인",
-      guideReopenAria: "가이드 다시보기",
       languageName: {
         en: "영어",
         zh: "중국어",
@@ -393,7 +371,7 @@ export const UI_TEXT: Record<AppLanguage, UiText> = {
     },
     settings: {
       title: "Settings",
-      soundOn: "🗣️ Voice On",
+      soundOn: "🔊 Voice On",
       soundOff: "🔇 Voice Off",
       levelUpSoundOn: "🔊 Level-Up Sound On",
       levelUpSoundOff: "🔇 Level-Up Sound Off",
@@ -531,17 +509,6 @@ export const UI_TEXT: Record<AppLanguage, UiText> = {
       goNextAria: "Go next",
       replayAria: "Replay",
       forceNextAria: "Force next",
-      guideTitle: "Loopeak Start Guide",
-      guideReplayBefore: "Tap the center voice button",
-      guideReplayAfter: "to replay the current sentence.",
-      guideForceNextBefore: "Tap the right Force Next button",
-      guideForceNextAfter: "to move to the next sentence immediately.",
-      guideSettingsBefore: "You can adjust repeat count from the Settings button",
-      guideSettingsAfter: "at the top-right of the home screen.",
-      guideSkip: "Skip",
-      guideNext: "Next",
-      guideDone: "Done",
-      guideReopenAria: "Show guide again",
       languageName: {
         en: "English",
         zh: "Chinese",

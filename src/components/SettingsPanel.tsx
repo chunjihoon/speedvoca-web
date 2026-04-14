@@ -77,12 +77,10 @@ export default function SettingsPanel({
         onTouchStart={(e) => e.stopPropagation()}
       >
         <div className="settings-header sangju-gotgam">
-          <div className="settings-header-left">
-            <button className="settings-close-btn settings-back-btn" onClick={onClose} type="button">
-              &lt;
-            </button>
-            <h3 className="sangju-gotgam">{ui.settings.title}</h3>
-          </div>
+          <h3 className="sangju-gotgam">{ui.settings.title}</h3>
+          <button className="settings-close-btn" onClick={onClose} type="button">
+            ✕
+          </button>
         </div>
 
         <div className="settings-section settings-inline-row">

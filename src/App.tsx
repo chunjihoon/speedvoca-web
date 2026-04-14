@@ -277,7 +277,6 @@ export default function App() {
 
   const [settingsMap, setSettingsMap] = useState<Record<string, { randomEnabled?: boolean; fontScale?: number }>>({});
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [readerGuideHighlightSettings, setReaderGuideHighlightSettings] = useState(false);
   const [shareSheetOpen, setShareSheetOpen] = useState(false);
   const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false);
   const [importNoticeMessage, setImportNoticeMessage] = useState<string | null>(null);
@@ -1510,7 +1509,7 @@ const handleDeleteChapter = async (sheet: SheetContent) => {
             <span className="topbar-language-label topbar-language-label-en">EN</span>
           </button>
           <button
-            className={`settings-icon-btn ${readerGuideHighlightSettings ? "reader-guide-target" : ""}`}
+            className="settings-icon-btn"
             onClick={handleOpenSettings}
             aria-label={ui.app.settingsAria}
             type="button"
@@ -1945,7 +1944,6 @@ const handleDeleteChapter = async (sheet: SheetContent) => {
           onRequestExit={handleRequestExitReader}
           onConfirmExit={confirmExitReader}
           onCancelExit={cancelExitReader}
-          onGuideHighlightSettingsChange={setReaderGuideHighlightSettings}
           translationLanguage={selectedRecommendedSession?.translationLanguage ?? null}
           translationOptions={
             selectedRecommendedSession
