@@ -346,7 +346,7 @@ export const UI_TEXT: Record<AppLanguage, UiText> = {
       manualPolicyDailyLimit:
         "정책에 의해 지금은 하루 최대 100문장을 초과 생성할 수 없습니다. PRO 플랜은 5월 오픈 예정입니다.",
       manualPolicyDailyRemaining: (remaining) =>
-        `일일 신규 생성 잔여 문장 수: ${remaining}개/60개`,
+        `일일 신규 생성 잔여 문장 수: ${remaining}개/100개`,
       manualLanguageMismatch: (line, detected, selected) =>
         `${line}행 원문 기준 감지 언어(${detected})와 선택 언어(${selected})가 일치하지 않습니다.\n앞 10행의 언어를 확인한 뒤 다시 저장해주세요.`,
     },
@@ -560,11 +560,11 @@ export const UI_TEXT: Record<AppLanguage, UiText> = {
       parseMissingValueLineError: (line) =>
         `Line ${line} has an empty sentence or translation value.`,
       manualPolicyMaxChars: (lineText) =>
-        `By policy, each sentence is currently limited to 100 characters.\nExceeded text: ${lineText}\nPro plan opens in May.`,
+        `By policy, each sentence is currently limited to 250 characters.\nExceeded text: ${lineText}\nPro plan opens in May.`,
       manualPolicyDailyLimit:
-        "By policy, you can currently create up to 60 sentences per day. Pro plan opens in May.",
+        "By policy, you can currently create up to 100 sentences per day. Pro plan opens in May.",
       manualPolicyDailyRemaining: (remaining) =>
-        `Remaining daily new sentence slots: ${remaining}/60`,
+        `Remaining daily new sentence slots: ${remaining}/100`,
       manualLanguageMismatch: (line, detected, selected) =>
         `The detected language from line ${line} (${detected}) does not match the selected language (${selected}).\nPlease review the first 10 lines and try again.`,
     },
