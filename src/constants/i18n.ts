@@ -342,9 +342,9 @@ export const UI_TEXT: Record<AppLanguage, UiText> = {
       parseMissingValueLineError: (line) =>
         `${line}번째 줄에 sentence 또는 translation이 비어 있습니다.`,
       manualPolicyMaxChars: (lineText) =>
-        `정책에 의해 지금은 문장당 최대 100자를 초과할 수 없습니다.\n초과 문장: ${lineText}\nPRO 플랜은 5월 오픈 예정입니다.`,
+        `정책에 의해 지금은 문장당 최대 250자를 초과할 수 없습니다.\n초과 문장: ${lineText}\nPRO 플랜은 5월 오픈 예정입니다.`,
       manualPolicyDailyLimit:
-        "정책에 의해 지금은 하루 최대 60문장을 초과 생성할 수 없습니다. PRO 플랜은 5월 오픈 예정입니다.",
+        "정책에 의해 지금은 하루 최대 100문장을 초과 생성할 수 없습니다. PRO 플랜은 5월 오픈 예정입니다.",
       manualPolicyDailyRemaining: (remaining) =>
         `일일 신규 생성 잔여 문장 수: ${remaining}개/60개`,
       manualLanguageMismatch: (line, detected, selected) =>
