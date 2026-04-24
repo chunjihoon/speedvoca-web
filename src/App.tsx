@@ -40,6 +40,8 @@ import {
   saveImportedChapter,
   saveImportedChapterWithDailyLimit,
   deleteImportedChapter,
+  saveNetworkErrorReport,
+  saveUserIssueReport,
 
 } from "./lib/firestore";
 import StatsBar from "./components/StatsBar";
@@ -88,8 +90,8 @@ const EMPTY_TOTAL_STATS: TotalStats = {
 };
 
 const GUEST_PENDING_STATS_KEY = "speedvoca_guest_pending_stats";
-const MANUAL_IMPORT_MAX_CHARS_PER_SENTENCE = 100;
-const MANUAL_IMPORT_DAILY_SENTENCE_LIMIT = 60;
+const MANUAL_IMPORT_MAX_CHARS_PER_SENTENCE = 250; // 2026.04.24 일시적으로 100->250자 상향 패치 - 추후 원복 예정
+const MANUAL_IMPORT_DAILY_SENTENCE_LIMIT = 100; // 2026.04.24 일시적으로 60->100문장 상향 패치 - 추후 원복 예정
 
 type AnalyticsSheetType = "recommended" | "my" | "favorite" | "imported" | "sample";
 
@@ -98,6 +100,13 @@ type AcquisitionParams = {
   utm_source?: string;
   utm_medium?: string;
   utm_campaign?: string;
+};
+
+type ExternalErrorDialog = {
+  occurredAtISO: string;
+  detail: string;
+  message: string;
+  source: string;
 };
 
 function createReaderSessionId() {
@@ -277,6 +286,7 @@ export default function App() {
 
   const [settingsMap, setSettingsMap] = useState<Record<string, { randomEnabled?: boolean; fontScale?: number }>>({});
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [readerGuideHighlightSettings, setReaderGuideHighlightSettings] = useState(false);
   const [shareSheetOpen, setShareSheetOpen] = useState(false);
   const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false);
   const [importNoticeMessage, setImportNoticeMessage] = useState<string | null>(null);
@@ -287,6 +297,11 @@ export default function App() {
   const [loginPromptDescription, setLoginPromptDescription] = useState(
     ui.loginPrompt.requiredDescription
   );
+  const [externalErrorDialog, setExternalErrorDialog] = useState<ExternalErrorDialog | null>(null);
+  const [externalErrorReporting, setExternalErrorReporting] = useState(false);
+  const [issueReportOpen, setIssueReportOpen] = useState(false);
+  const [issueReportInput, setIssueReportInput] = useState("");
+  const [issueReportSubmitting, setIssueReportSubmitting] = useState(false);
 
   const showImportNotice = (
     message: string,
@@ -350,6 +365,92 @@ export default function App() {
     return localStorage.getItem("speedvoca_developer_mode") === "true";
   });
 
+  const lastExternalErrorSignatureRef = useRef<string | null>(null);
+  const lastExternalErrorAtRef = useRef<number>(0);
+
+  const getRuntimeEnvironmentInfo = () => {
+    const ua = navigator.userAgent;
+    const deviceType: "pc" | "mobile" = /Mobi|Android|iPhone|iPad|iPod/i.test(ua) ? "mobile" : "pc";
+    const browser = /CriOS|Chrome/i.test(ua)
+      ? "Chrome"
+      : /EdgiOS|EdgA|Edg/i.test(ua)
+        ? "Edge"
+        : /FxiOS|Firefox/i.test(ua)
+          ? "Firefox"
+          : /Safari/i.test(ua) && !/Chrome|CriOS|Edg/i.test(ua)
+            ? "Safari"
+            : "Unknown";
+    const webViewVendor = /KAKAOTALK/i.test(ua)
+      ? "kakaotalk"
+      : /Instagram/i.test(ua)
+        ? "instagram"
+        : /FBAN|FBAV/i.test(ua)
+          ? "facebook"
+          : /Line/i.test(ua)
+            ? "line"
+            : null;
+    const isWebView = Boolean(webViewVendor) || /\bwv\b/i.test(ua);
+
+    return {
+      deviceType,
+      browser,
+      isWebView,
+      webViewVendor,
+      userAgent: ua,
+      language: navigator.language ?? "",
+      platform: navigator.platform ?? "",
+      viewport: `${window.innerWidth}x${window.innerHeight}`,
+    };
+  };
+
+  const extractErrorDetail = (reason: unknown): string => {
+    if (reason instanceof Error) {
+      return reason.stack || `${reason.name}: ${reason.message}`;
+    }
+    if (typeof reason === "string") return reason;
+    try {
+      return JSON.stringify(reason);
+    } catch {
+      return String(reason);
+    }
+  };
+
+  const isExternalCommunicationError = (reason: unknown): boolean => {
+    const detail = extractErrorDetail(reason);
+    return (
+      /FirebaseError/i.test(detail) ||
+      /Missing or insufficient permissions/i.test(detail) ||
+      /network/i.test(detail) ||
+      /Failed to fetch/i.test(detail) ||
+      /NetworkError/i.test(detail) ||
+      /TTS request failed/i.test(detail)
+    );
+  };
+
+  const openExternalErrorDialog = (reason: unknown, source: string) => {
+    if (!isExternalCommunicationError(reason)) return;
+    const detail = extractErrorDetail(reason);
+    const signature = `${source}::${detail.slice(0, 240)}`;
+    const now = Date.now();
+
+    if (
+      lastExternalErrorSignatureRef.current === signature &&
+      now - lastExternalErrorAtRef.current < 1500
+    ) {
+      return;
+    }
+
+    lastExternalErrorSignatureRef.current = signature;
+    lastExternalErrorAtRef.current = now;
+    setExternalErrorDialog({
+      occurredAtISO: new Date(now).toISOString(),
+      detail,
+      message:
+        reason instanceof Error ? reason.message : typeof reason === "string" ? reason : "External API communication failure",
+      source,
+    });
+  };
+
   /** 기본제공학습자료 */
   const [selectedSheet, setSelectedSheet] = useState<SheetContent | null>(null);
   const [selectedRecommendedSession, setSelectedRecommendedSession] =
@@ -411,6 +512,23 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem("speedvoca_developer_mode", String(developerModeEnabled));
   }, [developerModeEnabled]);
+
+  useEffect(() => {
+    const onUnhandledRejection = (event: PromiseRejectionEvent) => {
+      openExternalErrorDialog(event.reason, "unhandledrejection");
+    };
+
+    const onWindowError = (event: ErrorEvent) => {
+      openExternalErrorDialog(event.error ?? event.message, "window.error");
+    };
+
+    window.addEventListener("unhandledrejection", onUnhandledRejection);
+    window.addEventListener("error", onWindowError);
+    return () => {
+      window.removeEventListener("unhandledrejection", onUnhandledRejection);
+      window.removeEventListener("error", onWindowError);
+    };
+  }, []);
 
   useEffect(() => {
     localStorage.setItem(APP_LANGUAGE_STORAGE_KEY, appLanguage);
@@ -1038,6 +1156,7 @@ export default function App() {
         trackEvent("share_native_cancel", getCommonAnalyticsParams());
         return;
       }
+      openExternalErrorDialog(error, "navigator.share");
     }
 
     trackEvent("share_fallback_open", getCommonAnalyticsParams());
@@ -1065,6 +1184,85 @@ export default function App() {
       trackEvent("share_copy_link", getCommonAnalyticsParams());
     } finally {
       setShareSheetOpen(false);
+    }
+  };
+
+  const handleReportExternalError = async () => {
+    if (!externalErrorDialog) return;
+    if (!user?.uid) {
+      showImportNotice(ui.networkError.reportLoginRequired);
+      return;
+    }
+
+    try {
+      setExternalErrorReporting(true);
+      await saveNetworkErrorReport({
+        uid: user.uid,
+        occurredAtISO: externalErrorDialog.occurredAtISO,
+        errorDetail: externalErrorDialog.detail,
+        errorMessage: externalErrorDialog.message,
+        source: externalErrorDialog.source,
+        accountEmail: user.email ?? null,
+        environment: getRuntimeEnvironmentInfo(),
+      });
+      trackEvent("network_error_report_submit", {
+        ...getCommonAnalyticsParams(),
+        source: externalErrorDialog.source,
+      });
+      setExternalErrorDialog(null);
+      showImportNotice(ui.networkError.reportSuccess);
+    } catch (reportError) {
+      openExternalErrorDialog(reportError, "network_error_report_submit");
+      showImportNotice(ui.networkError.reportFailed);
+    } finally {
+      setExternalErrorReporting(false);
+    }
+  };
+
+  const handleOpenIssueReport = async () => {
+    const ok = await requireLogin(
+      ui.settings.issueReportTitle,
+      ui.settings.issueReportSubtitle,
+      "issue_report"
+    );
+    if (!ok) return;
+    setIssueReportInput("");
+    setIssueReportOpen(true);
+  };
+
+  const handleSubmitIssueReport = async () => {
+    const message = issueReportInput.trim();
+    if (!message) {
+      showImportNotice(ui.settings.issueReportEmpty);
+      return;
+    }
+    if (!user?.uid) {
+      showImportNotice(ui.networkError.reportLoginRequired);
+      return;
+    }
+
+    try {
+      setIssueReportSubmitting(true);
+      await saveUserIssueReport({
+        uid: user.uid,
+        accountEmail: user.email ?? null,
+        message,
+        source: "settings_manual_report",
+        occurredAtISO: new Date().toISOString(),
+        environment: getRuntimeEnvironmentInfo(),
+      });
+      trackEvent("issue_report_submit", {
+        ...getCommonAnalyticsParams(),
+        source: "settings_manual_report",
+      });
+      setIssueReportOpen(false);
+      setIssueReportInput("");
+      showImportNotice(ui.settings.issueReportSuccess);
+    } catch (error) {
+      openExternalErrorDialog(error, "saveUserIssueReport");
+      showImportNotice(ui.settings.issueReportFailed);
+    } finally {
+      setIssueReportSubmitting(false);
     }
   };
 
@@ -1311,6 +1509,7 @@ export default function App() {
         { focusMyLearningAfterClose: true }
       );
     } catch (error) {
+      openExternalErrorDialog(error, "saveImportedChapterWithDailyLimit");
       const message =
         error instanceof Error
           ? error.message
@@ -1351,8 +1550,13 @@ const handleDeleteChapter = async (sheet: SheetContent) => {
   
     if (!importedTarget?.chapterId) return;
 
-    await deleteImportedChapter(user.uid, importedTarget.chapterId);
-    await reloadUserData(user);
+    try {
+      await deleteImportedChapter(user.uid, importedTarget.chapterId);
+      await reloadUserData(user);
+    } catch (error) {
+      openExternalErrorDialog(error, "deleteImportedChapter");
+      return;
+    }
   
     if (
       selectedSheet &&
@@ -1416,6 +1620,7 @@ const handleDeleteChapter = async (sheet: SheetContent) => {
       await reloadUserData(user);
       showImportNotice(ui.alerts.importDone(parsedSheets.length));
     } catch (error) {
+      openExternalErrorDialog(error, "parseWorkbookFile_or_saveImportedChapter");
       console.error(error);
       showImportNotice(ui.alerts.importFailed);
     } finally {
@@ -1461,6 +1666,7 @@ const handleDeleteChapter = async (sheet: SheetContent) => {
   
       window.history.pushState({ speedvocaReader: true }, "");
     } catch (error) {
+      openExternalErrorDialog(error, "fetchRecommendedSheet");
       console.error(error);
       setRecommendedLoadError(
         error instanceof Error ? error.message : ui.home.recommendedLoadFailed
@@ -1509,7 +1715,7 @@ const handleDeleteChapter = async (sheet: SheetContent) => {
             <span className="topbar-language-label topbar-language-label-en">EN</span>
           </button>
           <button
-            className="settings-icon-btn"
+            className={`settings-icon-btn ${readerGuideHighlightSettings ? "reader-guide-target" : ""}`}
             onClick={handleOpenSettings}
             aria-label={ui.app.settingsAria}
             type="button"
@@ -1557,6 +1763,9 @@ const handleDeleteChapter = async (sheet: SheetContent) => {
             }
             onLogout={handleRequestLogout}
             onShare={handleShareApp}
+            onOpenIssueReport={() => {
+              void handleOpenIssueReport();
+            }}
             isDeveloperAccount={isDeveloperAccount}
             developerModeEnabled={developerModeEnabled}
             onToggleDeveloperMode={() => setDeveloperModeEnabled((prev) => !prev)}
@@ -1622,7 +1831,49 @@ const handleDeleteChapter = async (sheet: SheetContent) => {
             </div>
           )}
 
-          {importNoticeMessage && !settingsOpen && (
+          {issueReportOpen && (
+            <div
+              className="confirm-overlay"
+              onPointerDown={(e) => {
+                if (e.target === e.currentTarget && !issueReportSubmitting) {
+                  setIssueReportOpen(false);
+                }
+              }}
+            >
+              <div className="confirm-modal" onClick={(e) => e.stopPropagation()}>
+                <h3 className="sangju-gotgam">{ui.settings.issueReportTitle}</h3>
+                <p>{ui.settings.issueReportSubtitle}</p>
+                <textarea
+                  className="manual-textarea issue-report-textarea"
+                  value={issueReportInput}
+                  onChange={(e) => setIssueReportInput(e.target.value)}
+                  placeholder={ui.settings.issueReportPlaceholder}
+                  rows={6}
+                  disabled={issueReportSubmitting}
+                />
+                <div className="confirm-actions">
+                  <button
+                    className="secondary-btn"
+                    onClick={() => setIssueReportOpen(false)}
+                    disabled={issueReportSubmitting}
+                  >
+                    {ui.common.cancel}
+                  </button>
+                  <button
+                    className="primary-btn"
+                    onClick={() => {
+                      void handleSubmitIssueReport();
+                    }}
+                    disabled={issueReportSubmitting}
+                  >
+                    {ui.settings.issueReportSubmit}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {importNoticeMessage && (
             <div
               className="confirm-overlay"
               onPointerDown={(e) => {
@@ -1637,6 +1888,44 @@ const handleDeleteChapter = async (sheet: SheetContent) => {
                 <div className="confirm-actions">
                   <button className="primary-btn" onClick={closeImportNotice}>
                     {ui.common.close}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {externalErrorDialog && (
+            <div
+              className="confirm-overlay"
+              onPointerDown={(e) => {
+                if (e.target === e.currentTarget && !externalErrorReporting) {
+                  setExternalErrorDialog(null);
+                }
+              }}
+            >
+              <div className="confirm-modal" onClick={(e) => e.stopPropagation()}>
+                <h3 className="sangju-gotgam">{ui.networkError.title}</h3>
+                <p>{ui.networkError.description}</p>
+                <p className="import-notice-text">
+                  <strong>{ui.networkError.detailLabel}: </strong>
+                  {externalErrorDialog.detail}
+                </p>
+                <div className="confirm-actions">
+                  <button
+                    className="secondary-btn"
+                    onClick={() => setExternalErrorDialog(null)}
+                    disabled={externalErrorReporting}
+                  >
+                    {ui.common.cancel}
+                  </button>
+                  <button
+                    className="primary-btn"
+                    onClick={() => {
+                      void handleReportExternalError();
+                    }}
+                    disabled={externalErrorReporting}
+                  >
+                    {ui.common.report}
                   </button>
                 </div>
               </div>
@@ -1944,6 +2233,7 @@ const handleDeleteChapter = async (sheet: SheetContent) => {
           onRequestExit={handleRequestExitReader}
           onConfirmExit={confirmExitReader}
           onCancelExit={cancelExitReader}
+          onGuideHighlightSettingsChange={setReaderGuideHighlightSettings}
           translationLanguage={selectedRecommendedSession?.translationLanguage ?? null}
           translationOptions={
             selectedRecommendedSession

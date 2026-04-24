@@ -15,6 +15,7 @@ type UiText = {
     notice: string;
     close: string;
     cancel: string;
+    report: string;
     exit: string;
     back: string;
     on: string;
@@ -22,6 +23,14 @@ type UiText = {
     yes: string;
     no: string;
     favoritesLabel: string;
+  };
+  networkError: {
+    title: string;
+    description: string;
+    detailLabel: string;
+    reportSuccess: string;
+    reportFailed: string;
+    reportLoginRequired: string;
   };
   level: {
     short: string;
@@ -55,6 +64,14 @@ type UiText = {
     shareByMessage: string;
     shareByMail: string;
     shareCopied: string;
+    issueReportButton: string;
+    issueReportTitle: string;
+    issueReportSubtitle: string;
+    issueReportPlaceholder: string;
+    issueReportSubmit: string;
+    issueReportEmpty: string;
+    issueReportSuccess: string;
+    issueReportFailed: string;
     logoutConfirmTitle: string;
     logoutConfirmDescription: string;
   };
@@ -152,6 +169,17 @@ type UiText = {
     goNextAria: string;
     replayAria: string;
     forceNextAria: string;
+    guideTitle: string;
+    guideReplayBefore: string;
+    guideReplayAfter: string;
+    guideForceNextBefore: string;
+    guideForceNextAfter: string;
+    guideSettingsBefore: string;
+    guideSettingsAfter: string;
+    guideSkip: string;
+    guideNext: string;
+    guideDone: string;
+    guideReopenAria: string;
     languageName: Record<"en" | "zh" | "fr" | "ja" | "ko", string>;
   };
   recommendedTitles: Record<string, string>;
@@ -170,6 +198,7 @@ export const UI_TEXT: Record<AppLanguage, UiText> = {
       notice: "알림",
       close: "닫기",
       cancel: "취소",
+      report: "Report",
       exit: "종료",
       back: "뒤로",
       on: "켜짐",
@@ -177,6 +206,15 @@ export const UI_TEXT: Record<AppLanguage, UiText> = {
       yes: "예",
       no: "아니오",
       favoritesLabel: "즐겨찾기",
+    },
+    networkError: {
+      title: "네트워크 오류",
+      description:
+        '일시적인 네트워크 오류가 발생했습니다. "Report" 버튼을 눌러 제보해주시면 24시간 내에 조치하도록 하겠습니다. 감사합니다.',
+      detailLabel: "오류상세",
+      reportSuccess: "오류 제보가 접수되었습니다. 감사합니다.",
+      reportFailed: "오류 제보 전송에 실패했습니다. 잠시 후 다시 시도해주세요.",
+      reportLoginRequired: "오류 제보는 로그인 상태에서 가능합니다.",
     },
     level: {
       short: "Lv.",
@@ -210,6 +248,15 @@ export const UI_TEXT: Record<AppLanguage, UiText> = {
       shareByMessage: "메시지로 공유",
       shareByMail: "메일로 공유",
       shareCopied: "링크가 복사되었습니다.",
+      issueReportButton: "🚨 오류 제보하기",
+      issueReportTitle: "🚨 오류 제보하기",
+      issueReportSubtitle:
+        "룹픽을 사용하시다가 불편함을 느꼈거나 버그를 발견하셨다면 자유롭게 작성해서 레포트 부탁드립니다. 확인된 내용은 꼼꼼히 검토하여 다음 배포 시 반영될 수 있도록 노력하겠습니다. 감사합니다.",
+      issueReportPlaceholder: "발견한 오류 내용을 자유롭게 작성해주세요.",
+      issueReportSubmit: "레포트",
+      issueReportEmpty: "오류 내용을 입력해주세요.",
+      issueReportSuccess: "오류 제보가 접수되었습니다. 감사합니다.",
+      issueReportFailed: "오류 제보 전송에 실패했습니다. 잠시 후 다시 시도해주세요.",
       logoutConfirmTitle: "정말 로그아웃하시겠습니까?",
       logoutConfirmDescription: "현재 계정에서 로그아웃됩니다.",
     },
@@ -321,6 +368,17 @@ export const UI_TEXT: Record<AppLanguage, UiText> = {
       goNextAria: "다음으로",
       replayAria: "리플레이",
       forceNextAria: "강제로 다음",
+      guideTitle: "룹픽 학습 가이드",
+      guideReplayBefore: "가운데 음성 버튼",
+      guideReplayAfter: "을 누르면 현재 문장이 반복재생 됩니다.",
+      guideForceNextBefore: "오른쪽 다음으로 이동 버튼",
+      guideForceNextAfter: "을 누르면 바로 다음 문장으로 이동합니다.",
+      guideSettingsBefore: "반복 횟수 조절은 우측 상단 설정 버튼",
+      guideSettingsAfter: "에서 변경할 수 있습니다.",
+      guideSkip: "건너뛰기",
+      guideNext: "다음",
+      guideDone: "확인",
+      guideReopenAria: "가이드 다시보기",
       languageName: {
         en: "영어",
         zh: "중국어",
@@ -356,6 +414,7 @@ export const UI_TEXT: Record<AppLanguage, UiText> = {
       notice: "Notice",
       close: "Close",
       cancel: "Cancel",
+      report: "Report",
       exit: "Exit",
       back: "Back",
       on: "On",
@@ -363,6 +422,15 @@ export const UI_TEXT: Record<AppLanguage, UiText> = {
       yes: "Yes",
       no: "No",
       favoritesLabel: "Favorites",
+    },
+    networkError: {
+      title: "Network Error",
+      description:
+        'A temporary network error occurred. If you tap "Report", we will review and take action within 24 hours. Thank you.',
+      detailLabel: "Error Detail",
+      reportSuccess: "Your error report has been submitted. Thank you.",
+      reportFailed: "Failed to submit the error report. Please try again later.",
+      reportLoginRequired: "Error reporting is available only when logged in.",
     },
     level: {
       short: "Lv.",
@@ -396,6 +464,15 @@ export const UI_TEXT: Record<AppLanguage, UiText> = {
       shareByMessage: "Share by message",
       shareByMail: "Share by email",
       shareCopied: "Link copied.",
+      issueReportButton: "🚨 Report an issue",
+      issueReportTitle: "🚨 Report an issue",
+      issueReportSubtitle:
+        "If you experienced any inconvenience or found a bug while using Loopeak, please describe it freely and send us a report. We will review carefully and do our best to reflect it in upcoming releases. Thank you.",
+      issueReportPlaceholder: "Describe the issue you found.",
+      issueReportSubmit: "Report",
+      issueReportEmpty: "Please enter issue details.",
+      issueReportSuccess: "Your issue report has been submitted. Thank you.",
+      issueReportFailed: "Failed to submit issue report. Please try again later.",
       logoutConfirmTitle: "Do you really want to log out?",
       logoutConfirmDescription: "You will be logged out of the current account.",
     },
@@ -509,6 +586,17 @@ export const UI_TEXT: Record<AppLanguage, UiText> = {
       goNextAria: "Go next",
       replayAria: "Replay",
       forceNextAria: "Force next",
+      guideTitle: "Loopeak Start Guide",
+      guideReplayBefore: "Tap the center voice button",
+      guideReplayAfter: "to replay the current sentence.",
+      guideForceNextBefore: "Tap the right Force Next button",
+      guideForceNextAfter: "to move to the next sentence immediately.",
+      guideSettingsBefore: "You can adjust repeat count from the Settings button",
+      guideSettingsAfter: "at the top-right of the home screen.",
+      guideSkip: "Skip",
+      guideNext: "Next",
+      guideDone: "Done",
+      guideReopenAria: "Show guide again",
       languageName: {
         en: "English",
         zh: "Chinese",

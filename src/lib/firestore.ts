@@ -4,7 +4,9 @@ import {
   deleteDoc,
   doc,
   getDoc,
+  getDocFromServer,
   getDocs,
+  getDocsFromServer,
   increment,
   runTransaction,
   serverTimestamp,
@@ -68,6 +70,24 @@ export async function ensureUserProfile(params: {
       photoURL,
       updatedAt: serverTimestamp(),
       createdAt: serverTimestamp(),
+    },
+    { merge: true }
+  );
+}
+
+export async function loadReaderGuideSeen(uid: string): Promise<boolean> {
+  const snap = await getDoc(doc(db, "users", uid));
+  if (!snap.exists()) return false;
+  const data = snap.data() as { readerGuideSeen?: boolean };
+  return data.readerGuideSeen === true;
+}
+
+export async function saveReaderGuideSeen(uid: string) {
+  await setDoc(
+    doc(db, "users", uid),
+    {
+      readerGuideSeen: true,
+      updatedAt: serverTimestamp(),
     },
     { merge: true }
   );
@@ -440,10 +460,78 @@ export async function deleteImportedChapter(uid: string, chapterId: string) {
   await deleteDoc(doc(db, "users", uid, "importedChapters", chapterId));
 }
 
+export type NetworkErrorReportPayload = {
+  uid: string;
+  occurredAtISO: string;
+  errorDetail: string;
+  errorMessage: string;
+  source: string;
+  accountEmail: string | null;
+  environment: {
+    deviceType: "pc" | "mobile";
+    browser: string;
+    isWebView: boolean;
+    webViewVendor: string | null;
+    userAgent: string;
+    language: string;
+    platform: string;
+    viewport: string;
+  };
+};
+
+export async function saveNetworkErrorReport(payload: NetworkErrorReportPayload) {
+  const reportRef = doc(collection(db, "errorReports"));
+  await setDoc(reportRef, {
+    reportType: "network",
+    uid: payload.uid,
+    occurredAtISO: payload.occurredAtISO,
+    errorDetail: payload.errorDetail,
+    errorMessage: payload.errorMessage,
+    source: payload.source,
+    accountEmail: payload.accountEmail,
+    environment: payload.environment,
+    createdAt: serverTimestamp(),
+  });
+}
+
+export type UserIssueReportPayload = {
+  uid: string;
+  accountEmail: string | null;
+  message: string;
+  source: string;
+  occurredAtISO: string;
+  environment: {
+    deviceType: "pc" | "mobile";
+    browser: string;
+    isWebView: boolean;
+    webViewVendor: string | null;
+    userAgent: string;
+    language: string;
+    platform: string;
+    viewport: string;
+  };
+};
+
+export async function saveUserIssueReport(payload: UserIssueReportPayload) {
+  const reportRef = doc(collection(db, "errorReports"));
+  await setDoc(reportRef, {
+    reportType: "manual",
+    uid: payload.uid,
+    accountEmail: payload.accountEmail,
+    message: payload.message,
+    source: payload.source,
+    occurredAtISO: payload.occurredAtISO,
+    environment: payload.environment,
+    createdAt: serverTimestamp(),
+  });
+}
+
 export async function loadUserStatsWithFallback(uid: string): Promise<UserStats> {
+  const userRef = doc(db, "users", uid);
+  const metaRef = collection(db, "users", uid, "chapterMeta");
   const [userSnap, metaSnap] = await Promise.all([
-    getDoc(doc(db, "users", uid)),
-    getDocs(collection(db, "users", uid, "chapterMeta")),
+    getDocFromServer(userRef).catch(() => getDoc(userRef)),
+    getDocsFromServer(metaRef).catch(() => getDocs(metaRef)),
   ]);
 
   const userData = userSnap.data() as Partial<UserStats> | undefined;

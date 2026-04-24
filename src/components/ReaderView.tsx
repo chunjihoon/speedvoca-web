@@ -10,13 +10,17 @@ import replayImage from "../assets/replay.png";
 import shuffleOnImage from "../assets/shuffleOn.png";
 import shuffleOffImage from "../assets/shuffleOff.png";
 import shareImage from "../assets/share.png";
+import guideImage from "../assets/guide.png";
+import settingIcon from "../assets/setting.png";
 import { FAVORITES_SHEET_NAME, type AppUiText } from "../constants/i18n";
 
 import {
   isFavoriteByLanguage,
+  loadReaderGuideSeen,
   recordCompletedTap,
   recordNext,
   recordReplay,
+  saveReaderGuideSeen,
   saveChapterSettings,
   toggleFavorite,
 } from "../lib/firestore";
@@ -46,6 +50,7 @@ type Props = {
   onRequestExit: () => void;
   onConfirmExit: () => void;
   onCancelExit: () => void;
+  onGuideHighlightSettingsChange?: (active: boolean) => void;
   translationLanguage?: LanguageCode | null;
   translationOptions?: LanguageCode[];
   onChangeTranslationLanguage?: (lang: LanguageCode) => void;
@@ -131,6 +136,7 @@ export default function ReaderView({
   onRequestExit,
   onConfirmExit,
   onCancelExit,
+  onGuideHighlightSettingsChange,
   translationLanguage,
   translationOptions,
   onChangeTranslationLanguage,
@@ -147,6 +153,8 @@ export default function ReaderView({
   const [randomEnabled, setRandomEnabled] = useState(chapterSettings?.randomEnabled ?? false);
   const [fontScale, setFontScale] = useState(chapterSettings?.fontScale ?? 1);
   const [favoriteActive, setFavoriteActive] = useState(false);
+  const [guideOpen, setGuideOpen] = useState(false);
+  const [guideStep, setGuideStep] = useState(0);
   const sessionStartedAtRef = useRef<number>(Date.now());
   const sessionCountsRef = useRef({
     replay: 0,
@@ -313,6 +321,63 @@ export default function ReaderView({
     setRandomEnabled(chapterSettings?.randomEnabled ?? false);
     setFontScale(chapterSettings?.fontScale ?? 1);
   }, [activeSheetSessionKey, chapterSettings?.randomEnabled, chapterSettings?.fontScale]);
+
+  const finishGuide = () => {
+    setGuideOpen(false);
+    if (isLoggedIn && userId) {
+      void saveReaderGuideSeen(userId);
+    }
+  };
+
+  const handleGuideNext = () => {
+    if (guideStep >= 2) {
+      finishGuide();
+      return;
+    }
+    setGuideStep((prev) => prev + 1);
+  };
+
+  const reopenGuide = () => {
+    setGuideStep(0);
+    setGuideOpen(true);
+  };
+
+  useEffect(() => {
+    if (!isLoggedIn || !userId) {
+      setGuideOpen(true);
+      setGuideStep(0);
+      return;
+    }
+
+    let cancelled = false;
+    void loadReaderGuideSeen(userId)
+      .then((seen) => {
+        if (cancelled) return;
+        if (!seen) {
+          setGuideOpen(true);
+          setGuideStep(0);
+        } else {
+          setGuideOpen(false);
+        }
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setGuideOpen(true);
+        setGuideStep(0);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [activeSheetSessionKey, isLoggedIn, userId]);
+
+  useEffect(() => {
+    const shouldHighlightSettings = guideOpen && guideStep === 2;
+    onGuideHighlightSettingsChange?.(shouldHighlightSettings);
+    return () => {
+      onGuideHighlightSettingsChange?.(false);
+    };
+  }, [guideOpen, guideStep, onGuideHighlightSettingsChange]);
 
   const ACTION_COOLDOWN_MS = 2000;
   const [actionLocked, setActionLocked] = useState(false);
@@ -679,6 +744,16 @@ export default function ReaderView({
                 >
                   <img src={shareImage} alt="" className="reader-inline-share-icon" />
                 </button>
+
+                <button
+                  className="control-btn reader-inline-guide"
+                  onClick={reopenGuide}
+                  type="button"
+                  aria-label={ui.reader.guideReopenAria}
+                  title={ui.reader.guideReopenAria}
+                >
+                  <img src={guideImage} alt="" className="reader-inline-guide-icon" />
+                </button>
               </div>
 
               <button
@@ -769,7 +844,9 @@ export default function ReaderView({
             </button>
 
             <button
-              className={`icon-action-btn main-action-btn ${actionLocked ? "cooldown" : ""}`}
+              className={`icon-action-btn main-action-btn ${actionLocked ? "cooldown" : ""} ${
+                guideOpen && guideStep === 0 ? "reader-guide-target" : ""
+              }`}
               onClick={handleReplayAction}
               disabled={actionLocked}
               aria-label={replayActionLabel}
@@ -795,7 +872,9 @@ export default function ReaderView({
             </button>
 
             <button
-              className={`icon-action-btn ${actionLocked ? "cooldown" : ""}`}
+              className={`icon-action-btn ${actionLocked ? "cooldown" : ""} ${
+                guideOpen && guideStep === 1 ? "reader-guide-target" : ""
+              }`}
               onClick={() => {
                 void goNext("force_next");
               }}
@@ -815,6 +894,48 @@ export default function ReaderView({
           </div>
         </div>
       </section>
+
+      {guideOpen && (
+        <div className="reader-guide-overlay" onClick={(e) => e.stopPropagation()}>
+          <div className={`reader-guide-card step-${guideStep}`}>
+            <div className="reader-guide-progress">{guideStep + 1} / 3</div>
+            <h3 className="sangju-gotgam">{ui.reader.guideTitle}</h3>
+            {guideStep === 0 ? (
+              <p className="reader-guide-inline-text">
+                {ui.reader.guideReplayBefore}
+                <span className="reader-guide-inline-icon-wrap replay" aria-hidden="true">
+                  <img src={replayImage} alt="" className="reader-guide-inline-icon" />
+                </span>
+                {ui.reader.guideReplayAfter}
+              </p>
+            ) : guideStep === 1 ? (
+              <p className="reader-guide-inline-text">
+                {ui.reader.guideForceNextBefore}
+                <span className="reader-guide-inline-icon-wrap force-next" aria-hidden="true">
+                  <img src={forceNextImage} alt="" className="reader-guide-inline-icon" />
+                </span>
+                {ui.reader.guideForceNextAfter}
+              </p>
+            ) : (
+              <p className="reader-guide-inline-text">
+                {ui.reader.guideSettingsBefore}
+                <span className="reader-guide-inline-icon-wrap settings" aria-hidden="true">
+                  <img src={settingIcon} alt="" className="reader-guide-inline-icon" />
+                </span>
+                {ui.reader.guideSettingsAfter}
+              </p>
+            )}
+            <div className="reader-guide-actions">
+              <button className="secondary-btn" onClick={finishGuide} type="button">
+                {ui.reader.guideSkip}
+              </button>
+              <button className="primary-btn" onClick={handleGuideNext} type="button">
+                {guideStep === 2 ? ui.reader.guideDone : ui.reader.guideNext}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {exitConfirmOpen && (
         <div className="confirm-overlay" onClick={onCancelExit}>

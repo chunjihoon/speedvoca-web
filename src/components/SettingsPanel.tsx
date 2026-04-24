@@ -18,6 +18,7 @@ type Props = {
   onLogin: () => void;
   onLogout: () => void;
   onShare: () => void;
+  onOpenIssueReport: () => void;
   totalNext: number;
   totalReplay: number;
   dailySentenceRemaining: number;
@@ -48,6 +49,7 @@ export default function SettingsPanel({
   onLogin,
   onLogout,
   onShare,
+  onOpenIssueReport,
   totalNext,
   totalReplay,
   dailySentenceRemaining,
@@ -77,10 +79,12 @@ export default function SettingsPanel({
         onTouchStart={(e) => e.stopPropagation()}
       >
         <div className="settings-header sangju-gotgam">
-          <h3 className="sangju-gotgam">{ui.settings.title}</h3>
-          <button className="settings-close-btn" onClick={onClose} type="button">
-            ✕
-          </button>
+          <div className="settings-header-left">
+            <button className="settings-close-btn settings-back-btn" onClick={onClose} type="button">
+              &lt;
+            </button>
+            <h3 className="sangju-gotgam">{ui.settings.title}</h3>
+          </div>
         </div>
 
         <div className="settings-section settings-inline-row">
@@ -180,6 +184,10 @@ export default function SettingsPanel({
         )}
 
         <div className="settings-section account-block">
+          <button className="control-btn settings-issue-report-btn" onClick={onOpenIssueReport} type="button">
+            {ui.settings.issueReportButton}
+          </button>
+
           <button className="settings-share-cta" onClick={onShare} type="button">
             <img src={shareImage} alt="" className="settings-share-icon" />
             <span>{ui.settings.shareCta}</span>
