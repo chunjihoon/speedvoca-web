@@ -67,6 +67,22 @@
   align-self: stretch;
   align-items: center;
   column-gap: 12px;
+  min-height: 44px;
+}
+
+.intro-page .intro-language-toggle-float {
+  position: fixed;
+  top: 18px;
+  right: 18px;
+  z-index: 50;
+  background: #ffffff;
+  border: 1px solid rgba(10, 145, 0, 0.42);
+  box-shadow: 0 14px 32px rgba(15, 23, 42, 0.16);
+  backdrop-filter: none;
+}
+
+.intro-page .intro-language-toggle-float:hover {
+  background: #f5fff3;
 }
 
 .intro-brand {
@@ -609,6 +625,11 @@
 
   .intro-hero-topbar {
     flex-direction: column;
+  }
+
+  .intro-page .intro-language-toggle-float {
+    top: 14px;
+    right: 14px;
   }
 
   .try-cta-copy {

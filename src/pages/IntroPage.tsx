@@ -249,10 +249,9 @@ export default function IntroPage() {
 
   return (
     <main className="intro-page">
+      <LanguageToggle copy={copy.hero} language={language} onToggle={() => setLanguage(language === "ko" ? "en" : "ko")} />
       <HeroSection
         copy={copy.hero}
-        language={language}
-        onToggle={() => setLanguage(language === "ko" ? "en" : "ko")}
       />
       <FeatureFlowSection language={language} />
       <TryLoopeakSection language={language} />
@@ -265,27 +264,13 @@ export default function IntroPage() {
 
 function HeroSection({
   copy,
-  language,
-  onToggle,
 }: {
   copy: IntroCopy["hero"];
-  language: IntroLanguage;
-  onToggle: () => void;
 }) {
   return (
     <section className="intro-hero intro-reveal intro-hero-center">
       <div className="intro-hero-topbar">
         <div className="intro-badge">{copy.badge}</div>
-        <button
-          className={`topbar-language-toggle ${language === "en" ? "is-en" : "is-ko"}`}
-          type="button"
-          onClick={onToggle}
-          aria-label={copy.toggleAria}
-        >
-          <span className="topbar-language-thumb" aria-hidden="true" />
-          <span className="topbar-language-label topbar-language-label-ko">KO</span>
-          <span className="topbar-language-label topbar-language-label-en">EN</span>
-        </button>
       </div>
 
       <h1>June</h1>
@@ -294,6 +279,29 @@ function HeroSection({
       <p className="intro-meta">{copy.meta}</p>
       <SocialIconLinks links={copy.secondaryLinks ?? []} />
     </section>
+  );
+}
+
+function LanguageToggle({
+  copy,
+  language,
+  onToggle,
+}: {
+  copy: IntroCopy["hero"];
+  language: IntroLanguage;
+  onToggle: () => void;
+}) {
+  return (
+    <button
+      className={`topbar-language-toggle intro-language-toggle-float ${language === "en" ? "is-en" : "is-ko"}`}
+      type="button"
+      onClick={onToggle}
+      aria-label={copy.toggleAria}
+    >
+      <span className="topbar-language-thumb" aria-hidden="true" />
+      <span className="topbar-language-label topbar-language-label-ko">KO</span>
+      <span className="topbar-language-label topbar-language-label-en">EN</span>
+    </button>
   );
 }
 
@@ -322,9 +330,9 @@ function TryLoopeakSection({ language }: { language: IntroLanguage }) {
     <section className="intro-section intro-reveal">
       <div className="try-cta-panel">
         <div className="try-cta-copy">
-          <p className="try-cta-label">{language === "ko" ? "Loopeak 시작하기" : "Start here"}</p>
+          <p className="try-cta-label">{language === "ko" ? "룹픽 시작하기" : "Start Loopeak"}</p>
           <a className="intro-button intro-button-primary intro-button-featured" href="https://loopeak.app/" target="_blank" rel="noreferrer">
-            Try Loopeak
+            {language === "ko" ? "룹픽 시작하기" : "Try Loopeak"}
           </a>
         </div>
       </div>
