@@ -6,7 +6,9 @@ import type {
   LanguageCode,
   MultilingualRemoteSheetContent,
   RecommendedStudySession,
-} from "./types/content";import { parseWorkbookFile } from "./lib/workbook";
+} from "./types/content";
+import { parseWorkbookFile } from "./lib/workbook";
+import IntroPage from "./pages/IntroPage";
 //import TopBar from "./components/TopBar";
 import SheetList from "./components/SheetList";
 import ReaderView from "./components/ReaderView";
@@ -189,6 +191,10 @@ function hasAnyStats(stats: TotalStats): boolean {
   );
 }
 
+export default function App() {
+  return isIntroRoute() ? <IntroPage /> : <HomeApp />;
+}
+
 function toChapterLanguage(lang: TargetLanguageCode): ChapterLanguage {
   switch (lang) {
     case "en":
@@ -244,7 +250,15 @@ function getManualLanguageLabel(ui: AppUiText, language: ChapterLanguage): strin
 
 
 
-export default function App() {
+function isIntroRoute() {
+  if (typeof window === "undefined") {
+    return false;
+  }
+
+  return window.location.pathname.replace(/\/+$/, "") === "/intro";
+}
+
+function HomeApp() {
   const { user, authLoading } = useAuth();
   const acquisitionParams = useMemo(() => readAcquisitionParams(), []);
   const [appLanguage, setAppLanguage] = useState<AppLanguage>(() => {
