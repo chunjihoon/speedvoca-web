@@ -1,182 +1,409 @@
-import { useEffect } from "react";
+import { useEffect, useState, type ReactNode } from "react";
+import loopeakImportImage from "../assets/loopeak-import.jpg";
+import loopeakMylearningImage from "../assets/loopeak-mylearning.jpg";
+import loopeakStudyImage from "../assets/loopeak-study.jpg";
+import loopeakLevelupImage from "../assets/loopeak-levelup.jpg";
+import gmailIcon from "../assets/icon-gmail.png";
+import linkedinIcon from "../assets/icon-linkedin.png";
+import youtubeIcon from "../assets/icon-youtube.png";
 import "./intro-page.css";
 
-const builtItems = [
+type IntroLanguage = "ko" | "en";
+
+const INTRO_LANGUAGE_STORAGE_KEY = "speedvoca_intro_language";
+
+const INTRO_COPY = {
+  ko: {
+    hero: {
+      badge: "개인 소개",
+      subtitle: "스피킹 반복학습 서비스를 만드는 개발자입니다.",
+      body: "캐나다 해밀턴에서 Loopeak을 만들고 있습니다. 보고, 듣고, 말하는 반복을 통해 회화 표현이 자연스럽게 습득되도록 돕는 서비스입니다.",
+      meta: "한국 개발자 5년 경력 · 제품 빌더 · 콘텐츠 크리에이터",
+      secondaryCta: "LinkedIn 연결",
+      toggleAria: "영어로 전환",
+      secondaryLinks: [
+        {
+          label: "LinkedIn",
+          href: "http://www.linkedin.com/in/jihun-chun-96563b149",
+          icon: linkedinIcon,
+        },
+        {
+          label: "Email",
+          href: "mailto:guatemala3081@gmail.com",
+          icon: gmailIcon,
+        },
+        {
+          label: "YouTube",
+          href: "https://youtube.com/shorts/XvAIM1Qt3Ms?si=Vp49zNsgbvVvo06b",
+          icon: youtubeIcon,
+        },
+      ],
+    },
+    background: {
+      title: "소개",
+      lead: "",
+      items: [
+        {
+          title: "소프트웨어 개발 5년 경력",
+          items: [
+            "Tmoney GO (Asiana IDT): 대국민 모빌리티 서비스, 1,000만+ 사용자 규모",
+            "삼성생명 웹앱 (Asiana IDT): Vue.js / TypeScript / Spring Boot REST API",
+            "VAN 배치 서버 개발 (SPC Networks): 300만+ 일일 거래 정산 처리",
+            "Picqly: 사진 검색 앱 사이드 프로젝트",
+          ],
+        },
+        {
+          title: "캐나다 로컬 경험",
+          items: [
+            "Ramen Isshin Hamilton: Assistant Manager, 매장 운영, 팀 커뮤니케이션, 고객 응대",
+            "Ami’s Table: 음식 제조, 고객 응대",
+          ],
+        },
+      ],
+    },
+    looking: {
+      title: "찾고 있는 것",
+      lead: "",
+      intro: "Loopeak을 더 좋은 스피킹 반복학습 서비스로 키우기 위해 다양한 사람들과 교류하기를 원합니다.",
+      items: [
+        "Loopeak을 써보고 피드백을 줄 수 있으신 분",
+        "제품을 만드는 개발자",
+        "초기 서비스를 운영한 창업자",
+        "언어학습 · 에듀테크 · 콘텐츠에 관심 있으신 분",
+      ],
+    },
+    contact: {
+      title: "연락",
+      lead: "LinkedIn, 이메일, 유튜브로 편하게 연결해 주세요.",
+      buttons: [
+        {
+          label: "LinkedIn",
+          href: "http://www.linkedin.com/in/jihun-chun-96563b149",
+          icon: linkedinIcon,
+        },
+        {
+          label: "Email",
+          href: "mailto:guatemala3081@gmail.com",
+          icon: gmailIcon,
+        },
+        {
+          label: "YouTube",
+          href: "https://youtube.com/shorts/XvAIM1Qt3Ms?si=Vp49zNsgbvVvo06b",
+          icon: youtubeIcon,
+        },
+      ],
+    },
+  },
+  en: {
+    hero: {
+      badge: "Personal Intro",
+      subtitle: "I am a developer building a speaking repetition-learning service.",
+      body: "I’m building Loopeak in Hamilton, Canada. It is a service that helps conversation expressions become naturally learned through repetition of seeing, listening, and speaking.",
+      meta: "5 years of development experience in Korea · Product Builder · Content Creator",
+      secondaryCta: "Connect on LinkedIn",
+      toggleAria: "Switch to Korean",
+      secondaryLinks: [
+        {
+          label: "LinkedIn",
+          href: "http://www.linkedin.com/in/jihun-chun-96563b149",
+          icon: linkedinIcon,
+        },
+        {
+          label: "Email",
+          href: "mailto:guatemala3081@gmail.com",
+          icon: gmailIcon,
+        },
+        {
+          label: "YouTube",
+          href: "https://youtube.com/shorts/XvAIM1Qt3Ms?si=Vp49zNsgbvVvo06b",
+          icon: youtubeIcon,
+        },
+      ],
+    },
+    background: {
+      title: "Background",
+      lead: "A concise view of my background through short cards.",
+      items: [
+        {
+          title: "Software Development 5 years",
+          items: [
+            "Tmoney GO (Asiana IDT) · public mobility service · 10M+ user scale",
+            "Samsung Life Insurance web app (Asiana IDT) · Vue.js / TypeScript / Spring Boot REST API",
+            "SPC Networks VAN batch server · Oracle DB-based settlement batch development · 3M+ daily transactions",
+            "Picqly · photo search app side project",
+          ],
+        },
+        {
+          title: "Canadian Local Business",
+          items: [
+            "Ramen Isshin Hamilton · Assistant Manager · store operations / team communication / customer service",
+            "Ami’s Table · food preparation / customer service",
+          ],
+        },
+      ],
+    },
+    looking: {
+      title: "Looking For",
+      lead: "I want to connect with different people to grow Loopeak into a better speaking repetition-learning service.",
+      intro: "I would especially like to talk with people like these:",
+      items: [
+        "People who can try Loopeak and share feedback",
+        "Developers who build products",
+        "Founders who have run early services",
+        "People interested in language learning, EdTech, and content",
+      ],
+    },
+    contact: {
+      title: "Contact",
+      lead: "Feel free to connect through LinkedIn, email, or YouTube.",
+      buttons: [
+        {
+          label: "LinkedIn",
+          href: "http://www.linkedin.com/in/jihun-chun-96563b149",
+          icon: linkedinIcon,
+        },
+        {
+          label: "Email",
+          href: "mailto:guatemala3081@gmail.com",
+          icon: gmailIcon,
+        },
+        {
+          label: "YouTube",
+          href: "https://youtube.com/shorts/XvAIM1Qt3Ms?si=Vp49zNsgbvVvo06b",
+          icon: youtubeIcon,
+        },
+      ],
+    },
+  },
+} as const;
+
+type IntroCopy = (typeof INTRO_COPY)[IntroLanguage];
+
+const FEATURE_ITEMS = [
   {
-    title: "Loopeak",
-    description:
-      "현재 신규 론칭 중인 언어학습 서비스입니다. 반복 학습, TTS 음성, 다국어 콘텐츠, 사용자 맞춤 학습 흐름을 중심으로 개발하고 있습니다.",
+    image: loopeakImportImage,
+    text: {
+      ko: "문장과 해석을 포맷에 맞춰 입력하면 나만의 학습 챕터를 만들 수 있습니다.",
+      en: "You can create your own learning chapter by entering sentences and translations in the right format.",
+    },
   },
   {
-    title: "YouTube Language Learning Content",
-    description:
-      "Loopeak과 연결되는 언어학습 콘텐츠를 유튜브에서도 제작하고 있습니다. 실제 학습자가 필요한 표현을 확인하고, 콘텐츠로 함께 서비스를 성장시키는 실험을 하고 있습니다.",
+    image: loopeakMylearningImage,
+    text: {
+      ko: "생성된 챕터는 내 학습 세트로 관리 됩니다.",
+      en: "Created chapters are organized inside My Learning.",
+    },
   },
   {
-    title: "Picqly",
-    description:
-      "사이드프로젝트 Picqly에도 참여하며 모바일 서비스 운영과 배포, 제품 개선 경험을 쌓았습니다.",
+    image: loopeakStudyImage,
+    text: {
+      ko: "TTS 음성이 나오면 따라 말하면서 스피킹을 반복 연습할 수 있습니다.\n반복횟수, 순서셔플, 성우변경, 즐겨찾기 등 개인화 기능을 지원합니다.",
+      en: "When the TTS voice plays, you can repeat out loud and practice speaking.\nIt also supports personalization features like repeat count, shuffled order, voice switching, and favorites.",
+    },
   },
-];
+  {
+    image: loopeakLevelupImage,
+    text: {
+      ko: "반복 버튼을 누르면 경험치가 쌓이고 레벨업을 하게 됩니다.",
+      en: "Each repeat builds experience points and helps you level up.",
+    },
+  },
+] as const;
 
-const lookingForItems = [
-  "언어학습, 에듀테크, 콘텐츠 비즈니스에 관심 있는 분",
-  "초기 서비스 런칭과 사용자 확보를 경험한 창업자",
-  "웹/모바일 제품 개발자",
-  "캐나다에서 사이드프로젝트나 스타트업을 운영하는 분",
-  "Loopeak을 직접 써보고 피드백을 줄 수 있는 분",
-];
-
-const contactLinks = [
-  { label: "Loopeak", href: "https://loopeak.app/" },
-  { label: "LinkedIn", href: "http://www.linkedin.com/in/jihun-chun-96563b149" },
-  { label: "Email", href: "mailto:guatemala3081@gmail.com" },
-];
-
-function Paragraph({ children }: { children: React.ReactNode }) {
+function Paragraph({ children }: { children: ReactNode }) {
   return <p className="intro-paragraph">{children}</p>;
 }
 
+function SectionHeader({ title, description }: { title: string; description?: string }) {
+  return (
+    <div className="intro-section-header">
+      <h2>{title}</h2>
+      {description ? <p>{description}</p> : null}
+    </div>
+  );
+}
+
 export default function IntroPage() {
+  const [language, setLanguage] = useState<IntroLanguage>(() => {
+    if (typeof window === "undefined") {
+      return "ko";
+    }
+
+    const stored = window.localStorage.getItem(INTRO_LANGUAGE_STORAGE_KEY);
+    if (stored === "ko" || stored === "en") {
+      return stored;
+    }
+
+    return navigator.language.toLowerCase().startsWith("ko") ? "ko" : "en";
+  });
+
+  useEffect(() => {
+    window.localStorage.setItem(INTRO_LANGUAGE_STORAGE_KEY, language);
+  }, [language]);
+
   useEffect(() => {
     document.title = "June | Loopeak";
-  }, []);
+  }, [language]);
 
-  const handleCopyLink = async () => {
-    try {
-      await navigator.clipboard.writeText(window.location.href);
-      window.alert("현재 소개 페이지 링크를 복사했어요.");
-    } catch {
-      window.alert("링크 복사에 실패했어요. 브라우저 권한을 확인해 주세요.");
-    }
-  };
-
-  const handleGoHome = () => {
-    window.location.assign("/");
-  };
+  const copy = INTRO_COPY[language];
 
   return (
     <main className="intro-page">
-      <section className="intro-hero">
-        <div className="intro-badge">Personal Intro</div>
-        <div className="intro-brand">
-          <img src="/logo.png" alt="Loopeak" className="intro-brand-logo" />
-        </div>
-
-        <h1>June</h1>
-        <p className="intro-subtitle">Developer · Product Builder · Language Learning Content Creator</p>
-
-        <div className="intro-cta-row">
-          <button type="button" className="intro-button intro-button-primary" onClick={handleCopyLink}>
-            페이지 링크 복사
-          </button>
-          <button type="button" className="intro-button intro-button-secondary" onClick={handleGoHome}>
-            메인으로 이동
-          </button>
-        </div>
-      </section>
-
-      <section className="intro-grid">
-        <article className="intro-card intro-card-wide">
-          <h2>About</h2>
-          <Paragraph>
-            안녕하세요. 저는 한국에서 iOS와 서버 개발자로 일했고, 현재는 캐나다에서
-            언어학습 서비스 <strong>Loopeak</strong>을 만들고 있는 June입니다.
-          </Paragraph>
-          <Paragraph>
-            저는 오랫동안 “언어를 배운다”는 일이 단순히 단어를 외우거나 문법을 공부하는
-            것만으로는 충분하지 않다고 느껴왔습니다. 실제로 말하고, 듣고, 반복하고, 다시
-            꺼내 쓰는 과정이 있어야 언어가 몸에 남는다고 생각합니다.
-          </Paragraph>
-          <Paragraph>
-            그 고민에서 시작한 서비스가 <strong>Loopeak</strong>입니다.
-          </Paragraph>
-          <Paragraph>
-            Loopeak은 사용자가 영어, 프랑스어, 중국어 등 다양한 언어 표현을 반복해서 보고,
-            듣고, 말할 수 있도록 돕는 언어 반복학습 서비스입니다. 단순한 단어장보다는 더
-            살아 있는 학습 경험을 만들고 싶었고, 실제 학습자가 매일 부담 없이 다시 돌아올 수
-            있는 구조를 목표로 만들고 있습니다.
-          </Paragraph>
-        </article>
-
-        <article className="intro-card">
-          <h2>What I’ve Built</h2>
-          <div className="intro-stack">
-            {builtItems.map((item) => (
-              <div key={item.title} className="intro-stack-item">
-                <h3>{item.title}</h3>
-                <p>{item.description}</p>
-              </div>
-            ))}
-          </div>
-        </article>
-
-        <article className="intro-card">
-          <h2>My Background</h2>
-          <Paragraph>
-            한국에서는 약 5년간 개발자로 일했습니다. 서버 개발과 iOS 개발을 경험했고, 실제
-            사용자에게 제공되는 서비스 개발과 운영에 참여했습니다.
-          </Paragraph>
-          <Paragraph>
-            특히 모바일 서비스, 결제/교통 관련 서비스, 대규모 데이터 처리 흐름을 다루며
-            단순히 코드를 작성하는 것보다 “서비스가 실제로 안정적으로 작동하게 만드는 일”에
-            관심을 갖게 되었습니다.
-          </Paragraph>
-          <Paragraph>
-            캐나다에 온 이후에는 해밀턴 지역의 로컬 음식점에서 일하며 현지 고객 응대, 매장
-            운영, 팀 커뮤니케이션, 재고와 매출 관리 등 실제 비즈니스 운영 경험도 쌓고
-            있습니다. 이 경험은 기술만으로는 알기 어려운 사용자 행동, 현장 운영, 고객 경험을
-            이해하는 데 큰 도움이 되었습니다.
-          </Paragraph>
-        </article>
-
-        <article className="intro-card">
-          <h2>Education &amp; Content Experience</h2>
-          <Paragraph>
-            저는 개발자이기 전에 사람을 가르치고, 동기를 만들고, 계속 참여하게 만드는 일에도
-            관심이 많았습니다.
-          </Paragraph>
-          <Paragraph>
-            한국에서는 치어리딩 레슨과 관련 콘텐츠를 운영하며 사람들에게 움직임을 가르치고,
-            수업을 기획하고, 콘텐츠를 만들어 왔습니다. 이 경험은 지금 Loopeak을 만들 때도
-            이어지고 있습니다.
-          </Paragraph>
-          <Paragraph>
-            좋은 학습 서비스는 단순히 기능이 많은 앱이 아니라, 사용자가 다시 돌아오고 싶게
-            만드는 경험이어야 한다고 생각합니다.
-          </Paragraph>
-        </article>
-
-        <article className="intro-card intro-card-wide">
-          <h2>What I’m Looking For</h2>
-          <Paragraph>
-            현재 저는 Loopeak을 더 좋은 언어학습 서비스로 발전시키기 위해 다양한 사람들과
-            연결되고 싶습니다.
-          </Paragraph>
-          <Paragraph>특히 이런 분들과 이야기 나누고 싶습니다.</Paragraph>
-          <ul className="intro-list">
-            {lookingForItems.map((item) => (
-              <li key={item}>{item}</li>
-            ))}
-          </ul>
-          <Paragraph>
-            저는 개발, 교육, 콘텐츠, 현장 비즈니스 경험을 연결해 실제로 사람들이 꾸준히
-            사용하는 언어학습 서비스를 만들고 싶습니다.
-          </Paragraph>
-          <Paragraph>편하게 연락 주세요.</Paragraph>
-        </article>
-
-        <article className="intro-card intro-card-wide">
-          <h2>Contact</h2>
-          <div className="intro-links">
-            {contactLinks.map((item) => (
-              <a key={item.label} href={item.href} target="_blank" rel="noreferrer">
-                {item.label}
-              </a>
-            ))}
-          </div>
-        </article>
-      </section>
+      <HeroSection
+        copy={copy.hero}
+        language={language}
+        onToggle={() => setLanguage(language === "ko" ? "en" : "ko")}
+      />
+      <FeatureFlowSection language={language} />
+      <TryLoopeakSection language={language} />
+      <BackgroundSection copy={copy.background} />
+      <LookingForSection copy={copy.looking} />
+      <ContactSection copy={copy.contact} />
     </main>
+  );
+}
+
+function HeroSection({
+  copy,
+  language,
+  onToggle,
+}: {
+  copy: IntroCopy["hero"];
+  language: IntroLanguage;
+  onToggle: () => void;
+}) {
+  return (
+    <section className="intro-hero intro-reveal intro-hero-center">
+      <div className="intro-hero-topbar">
+        <div className="intro-badge">{copy.badge}</div>
+        <button
+          className={`topbar-language-toggle ${language === "en" ? "is-en" : "is-ko"}`}
+          type="button"
+          onClick={onToggle}
+          aria-label={copy.toggleAria}
+        >
+          <span className="topbar-language-thumb" aria-hidden="true" />
+          <span className="topbar-language-label topbar-language-label-ko">KO</span>
+          <span className="topbar-language-label topbar-language-label-en">EN</span>
+        </button>
+      </div>
+
+      <h1>June</h1>
+      <p className="intro-subtitle">{copy.subtitle}</p>
+      <Paragraph>{copy.body}</Paragraph>
+      <p className="intro-meta">{copy.meta}</p>
+      <SocialIconLinks links={copy.secondaryLinks ?? []} />
+    </section>
+  );
+}
+
+function FeatureFlowSection({ language }: { language: IntroLanguage }) {
+  return (
+    <section className="intro-section intro-reveal">
+      <div className="feature-flow-list">
+        {FEATURE_ITEMS.map((item, index) => (
+          <article key={item.image} className="feature-card">
+            <div className="feature-card-media">
+              <img src={item.image} alt="" className="feature-card-image" />
+            </div>
+            <div className="feature-card-copy">
+              <span className="feature-card-index">0{index + 1}</span>
+              <p>{item.text[language]}</p>
+            </div>
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function TryLoopeakSection({ language }: { language: IntroLanguage }) {
+  return (
+    <section className="intro-section intro-reveal">
+      <div className="try-cta-panel">
+        <div className="try-cta-copy">
+          <p className="try-cta-label">{language === "ko" ? "Loopeak 시작하기" : "Start here"}</p>
+          <a className="intro-button intro-button-primary intro-button-featured" href="https://loopeak.app/" target="_blank" rel="noreferrer">
+            Try Loopeak
+          </a>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function BackgroundSection({ copy }: { copy: IntroCopy["background"] }) {
+  return (
+    <section className="intro-section intro-reveal">
+      <SectionHeader title={copy.title} description={copy.lead} />
+      <div className="build-grid">
+        {copy.items.map((item) => (
+          <article key={item.title} className="build-card build-card-muted">
+            <h3>{item.title}</h3>
+            <ul className="background-item-list">
+              {item.items.map((listItem) => (
+                <li key={listItem}>{listItem}</li>
+              ))}
+            </ul>
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function LookingForSection({ copy }: { copy: IntroCopy["looking"] }) {
+  return (
+    <section className="intro-section intro-reveal">
+      <SectionHeader title={copy.title} description={copy.lead} />
+      <div className="looking-box">
+        <Paragraph>{copy.intro}</Paragraph>
+        <div className="pill-list">
+          {copy.items.map((item) => (
+            <span key={item} className="pill-item">
+              {item}
+            </span>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function ContactSection({ copy }: { copy: IntroCopy["contact"] }) {
+  return (
+    <section className="intro-section intro-reveal intro-section-contact">
+      <SectionHeader title={copy.title} description={copy.lead} />
+
+      <SocialIconLinks links={copy.buttons} />
+    </section>
+  );
+}
+
+function SocialIconLinks({
+  links,
+}: {
+  links: ReadonlyArray<{
+    label: string;
+    href: string;
+    icon: string;
+  }>;
+}) {
+  return (
+    <div className="social-icon-row" aria-label="Social links">
+      {links.map((item) => (
+        <a
+          key={item.label}
+          className="social-icon-button"
+          href={item.href}
+          target={item.href.startsWith("mailto:") ? undefined : "_blank"}
+          rel={item.href.startsWith("mailto:") ? undefined : "noreferrer"}
+          aria-label={item.label}
+          title={item.label}
+        >
+          <img src={item.icon} alt="" className="social-icon-image" />
+        </a>
+      ))}
+    </div>
   );
 }
